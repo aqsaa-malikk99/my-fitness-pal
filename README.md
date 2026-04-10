@@ -18,7 +18,7 @@ npm ci
 npm run dev
 ```
 
-Optional: keep `data/recipes.json` locally, then `npm run sync:recipes` copies it to `public/data/` for the in-app import button. The `data/` directory is not in this repository.
+Optional: keep `data/recipes.json` locally (gitignored at repo root), then run `npm run sync:recipes` to copy it into `src/data/recipes.json` before you commit. The built app bundles that file and, on first Recipes visit, seeds Firestore if your `users/{uid}/recipes` collection is empty.
 
 ## Deploy to GitHub Pages
 
