@@ -10,8 +10,9 @@ import {
   goalDirectionLabel,
 } from "@/lib/nutrition";
 import { buildWeeklySchedule } from "@/lib/schedule";
-import type { BodyType, GoalDirection, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
+import type { BodyType, Gender, GoalDirection, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
 import { saveProfile } from "@/firebase/userDoc";
+import NumericInput from "@/components/NumericInput";
 
 const DOW = [
   { bit: 0, label: "Sun" },
@@ -24,12 +25,13 @@ const DOW = [
 ];
 
 export default function SettingsPage() {
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, isAdmin } = useAuth();
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const [displayName, setDisplayName] = useState("");
+  const [gender, setGender] = useState<Gender>("prefer_not_say");
   const [heightCm, setHeightCm] = useState(165);
   const [weightKg, setWeightKg] = useState(70);
   const [bodyType, setBodyType] = useState<BodyType>("mesomorph");
@@ -62,6 +64,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (!profile) return;
     setDisplayName(profile.displayName);
+    setGender(profile.gender ?? "prefer_not_say");
     setHeightCm(profile.heightCm);
     setWeightKg(profile.weightKg);
     setBodyType(profile.bodyType);
@@ -164,6 +167,7 @@ export default function SettingsPage() {
     const next: UserProfile = {
       ...p,
       displayName: displayName.trim() || p.displayName,
+      gender,
       heightCm,
       weightKg,
       bodyType,
@@ -206,6 +210,13 @@ export default function SettingsPage() {
         </Link>
       </div>
       <p className="page-lead">Update your goal, targets, and schedule. Saved meal picks stay as they are.</p>
+      {isAdmin && (
+        <p style={{ margin: "-0.5rem 0 0.75rem", fontSize: "0.88rem" }}>
+          <Link to="/admin/recipes" style={{ color: "var(--accent)" }}>
+            Admin: edit or delete recipes in Firestore
+          </Link>
+        </p>
+      )}
       {err && <div className="error-banner">{err}</div>}
       {ok && <div className="success-banner">{ok}</div>}
 
@@ -213,17 +224,17 @@ export default function SettingsPage() {
         <h2>Basics</h2>
         <label>Display name</label>
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+        <label>Gender</label>
+        <select value={gender} onChange={(e) => setGender(e.target.value as Gender)}>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+          <option value="non_binary">Non-binary</option>
+          <option value="prefer_not_say">Prefer not to say</option>
+        </select>
         <label>Height (cm)</label>
-        <input type="number" min={120} max={230} value={heightCm} onChange={(e) => setHeightCm(Number(e.target.value))} />
+        <NumericInput min={120} max={230} value={heightCm} onValueChange={setHeightCm} />
         <label>Weight (kg)</label>
-        <input
-          type="number"
-          min={35}
-          max={250}
-          step={0.1}
-          value={weightKg}
-          onChange={(e) => setWeightKg(Number(e.target.value))}
-        />
+        <NumericInput min={35} max={250} step={0.1} value={weightKg} onValueChange={setWeightKg} />
         <label>Body type</label>
         <select value={bodyType} onChange={(e) => setBodyType(e.target.value as BodyType)}>
           <option value="ectomorph">Ectomorph</option>
@@ -252,14 +263,7 @@ export default function SettingsPage() {
           ))}
         </div>
         <label>Target weight (kg)</label>
-        <input
-          type="number"
-          min={35}
-          max={250}
-          step={0.1}
-          value={targetWeightKg}
-          onChange={(e) => setTargetWeightKg(Number(e.target.value))}
-        />
+        <NumericInput min={35} max={250} step={0.1} value={targetWeightKg} onValueChange={setTargetWeightKg} />
         <label>Goal date</label>
         <input type="date" value={goalDate} onChange={(e) => setGoalDate(e.target.value)} />
         <p className="page-lead" style={{ marginBottom: 0 }}>
@@ -281,13 +285,7 @@ export default function SettingsPage() {
         {periodEnabled && (
           <>
             <label>Cycle length (days)</label>
-            <input
-              type="number"
-              min={21}
-              max={40}
-              value={cycleLengthDays}
-              onChange={(e) => setCycleLengthDays(Number(e.target.value))}
-            />
+            <NumericInput min={21} max={40} value={cycleLengthDays} onValueChange={setCycleLengthDays} />
             <label>Last period start</label>
             <input type="date" value={lastPeriodStart} onChange={(e) => setLastPeriodStart(e.target.value)} />
           </>
@@ -314,7 +312,7 @@ export default function SettingsPage() {
       <div className="card stack">
         <h2>Gym & schedule</h2>
         <label>Strength days / week</label>
-        <input type="number" min={2} max={6} value={daysPerWeek} onChange={(e) => setDaysPerWeek(Number(e.target.value))} />
+        <NumericInput min={2} max={6} value={daysPerWeek} onValueChange={setDaysPerWeek} />
         <label>Main window start / end</label>
         <div className="row">
           <input type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} />
@@ -346,18 +344,18 @@ export default function SettingsPage() {
           <option value="rest">Rest / walk</option>
         </select>
         <label>Session length (min)</label>
-        <input type="number" min={25} max={75} value={sessionTotalMin} onChange={(e) => setSessionTotalMin(Number(e.target.value))} />
+        <NumericInput min={25} max={75} value={sessionTotalMin} onValueChange={setSessionTotalMin} />
         <label>Warm-up (min)</label>
-        <input type="number" min={3} max={20} value={warmupMin} onChange={(e) => setWarmupMin(Number(e.target.value))} />
+        <NumericInput min={3} max={20} value={warmupMin} onValueChange={setWarmupMin} />
         <label>Cardio after weights (min range)</label>
         <div className="row">
-          <input type="number" min={5} max={30} value={cardioAfterMin} onChange={(e) => setCardioAfterMin(Number(e.target.value))} />
-          <input type="number" min={5} max={45} value={cardioAfterMax} onChange={(e) => setCardioAfterMax(Number(e.target.value))} />
+          <NumericInput min={5} max={30} value={cardioAfterMin} onValueChange={setCardioAfterMin} />
+          <NumericInput min={5} max={45} value={cardioAfterMax} onValueChange={setCardioAfterMax} />
         </div>
         <label>Deload every (weeks)</label>
-        <input type="number" min={2} max={8} value={deloadEveryWeeks} onChange={(e) => setDeloadEveryWeeks(Number(e.target.value))} />
+        <NumericInput min={2} max={8} value={deloadEveryWeeks} onValueChange={setDeloadEveryWeeks} />
         <label>Steps goal</label>
-        <input type="number" min={3000} max={20000} step={500} value={stepsGoal} onChange={(e) => setStepsGoal(Number(e.target.value))} />
+        <NumericInput min={3000} max={20000} step={500} value={stepsGoal} onValueChange={setStepsGoal} />
         <label>Where you train</label>
         <select value={location} onChange={(e) => setLocation(e.target.value as typeof location)}>
           <option value="home">Home</option>

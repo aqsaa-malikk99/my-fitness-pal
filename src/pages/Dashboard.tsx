@@ -1,27 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "react-router-dom";
-import { listCalculatorDay, listProgress, todayIso } from "@/firebase/userDoc";
+import { listCalculatorDay, listDailyMealPlansMap, listProgress, todayIso } from "@/firebase/userDoc";
+import { resolveMealPlanForDate } from "@/lib/mealPlanResolve";
 import { stepsToKcalBurned, stepsNeededForKcalDeficit } from "@/lib/schedule";
 import { tdeeEstimate } from "@/lib/nutrition";
+import { MEAL_SLOT_ORDER } from "@/lib/mealSlotOrder";
 import type { GoalDirection, MealSlotId } from "@/types/profile";
 
-const SLOT_KEYS: MealSlotId[] = [
-  "preMorning",
-  "breakfast",
-  "lunch",
-  "dinner",
-  "snacks",
-  "drinks",
-  "bedtimeTea",
-  "nighttimeTea",
-];
+const SLOT_KEYS: MealSlotId[] = MEAL_SLOT_ORDER;
 
 export default function Dashboard() {
   const { profile, user, logout } = useAuth();
   const [consumed, setConsumed] = useState(0);
   const [todaySteps, setTodaySteps] = useState(0);
   const [weekBurned, setWeekBurned] = useState(0);
+  const [weightTrend, setWeightTrend] = useState<{ deltaKg: number; deltaBmi: number } | null>(null);
+  const [missingRecipeSlots, setMissingRecipeSlots] = useState<number | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user || !profile) return;
@@ -41,6 +36,24 @@ export default function Dashboard() {
       }
     }
     setWeekBurned(burn);
+
+    const withW = progressRows
+      .filter((r) => r.weightKg != null)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    if (withW.length >= 2) {
+      const w0 = withW[0].weightKg!;
+      const w1 = withW[1].weightKg!;
+      const hM = profile.heightCm / 100;
+      const bmi0 = w0 / (hM * hM);
+      const bmi1 = w1 / (hM * hM);
+      setWeightTrend({ deltaKg: w0 - w1, deltaBmi: bmi0 - bmi1 });
+    } else {
+      setWeightTrend(null);
+    }
+
+    const planMap = await listDailyMealPlansMap(user.uid);
+    const resolved = resolveMealPlanForDate(d, profile.createdAt.slice(0, 10), profile.mealAssignments, planMap);
+    setMissingRecipeSlots(SLOT_KEYS.filter((k) => !resolved.assignments[k]).length);
   }, [user, profile]);
 
   useEffect(() => {
@@ -59,7 +72,11 @@ export default function Dashboard() {
   const plannedSurplus = Math.max(0, n.dailyCalories - tdee);
   const over = consumed > n.dailyCalories ? consumed - n.dailyCalories : 0;
   const stepsToWalkOff = over > 0 ? stepsNeededForKcalDeficit(over, profile.weightKg) : 0;
-  const missingRecipes = SLOT_KEYS.filter((k) => !profile.mealAssignments[k]).length;
+  const missingRecipes =
+    missingRecipeSlots !== null
+      ? missingRecipeSlots
+      : SLOT_KEYS.filter((k) => !profile.mealAssignments[k]).length;
+  const showRemainPrimary = goalDir !== "gain" && remainEat >= 0;
 
   const eatSub =
     goalDir === "gain"
@@ -94,6 +111,19 @@ export default function Dashboard() {
           </h1>
           <p className="page-lead" style={{ margin: 0 }}>
             BMI {profile.bmi} · {profile.bmiCategory}
+            {weightTrend && (
+              <span className="dash-trend" aria-live="polite">
+                {" "}
+                · Weight{" "}
+                <span className={weightTrend.deltaKg <= 0 ? "dash-trend__down" : "dash-trend__up"}>
+                  {weightTrend.deltaKg <= 0 ? "▼" : "▲"} {Math.abs(weightTrend.deltaKg).toFixed(1)} kg
+                </span>{" "}
+                vs last log · BMI{" "}
+                <span className={weightTrend.deltaBmi <= 0 ? "dash-trend__down" : "dash-trend__up"}>
+                  {weightTrend.deltaBmi <= 0 ? "▼" : "▲"} {Math.abs(weightTrend.deltaBmi).toFixed(2)}
+                </span>
+              </span>
+            )}
           </p>
         </div>
         <div className="row" style={{ gap: "0.35rem" }}>
@@ -107,15 +137,17 @@ export default function Dashboard() {
       </div>
 
       <div className="metric-grid">
-        <div className="metric-tile">
-          <span className="metric-label">Food today</span>
+        <div className="metric-tile metric-tile--kcal">
+          <span className="metric-label">Calories left</span>
           <span className="metric-value">
-            {consumed}
+            {showRemainPrimary ? remainEat : consumed}
             <small> / {n.dailyCalories}</small>
           </span>
-          <span className="metric-sub">{eatSub}</span>
+          <span className="metric-sub">
+            {showRemainPrimary ? `${consumed} kcal eaten · ${eatSub}` : eatSub}
+          </span>
         </div>
-        <div className="metric-tile">
+        <div className="metric-tile metric-tile--steps">
           <span className="metric-label">Steps</span>
           <span className="metric-value">
             {todaySteps.toLocaleString()}
@@ -123,12 +155,12 @@ export default function Dashboard() {
           </span>
           <span className="metric-sub">~{stepsBurnToday} kcal from walking today (estimate)</span>
         </div>
-        <div className="metric-tile">
+        <div className="metric-tile metric-tile--burn">
           <span className="metric-label">Burn (7d steps)</span>
           <span className="metric-value">{weekBurned}</span>
           <span className="metric-sub">Estimated from steps you logged (7 days)</span>
         </div>
-        <div className="metric-tile">
+        <div className="metric-tile metric-tile--protein">
           <span className="metric-label">Protein target</span>
           <span className="metric-value">{n.proteinG}g</span>
           <span className="metric-sub">
@@ -169,27 +201,41 @@ export default function Dashboard() {
         <h2>Energy & plan</h2>
         {goalDir === "lose" && (
           <p className="page-lead" style={{ marginTop: 0 }}>
-            Planned deficit about <strong>{plannedDeficit}</strong> kcal/day vs estimated maintenance (~{tdee} kcal).
-            Your plan: <strong>{n.dailyCalories}</strong> kcal. Batch cooking:{" "}
-            {n.batchCooking ? "you’re open to meal prep" : "flexible"}.
+            We estimate your body burns about <strong>{tdee} kcal</strong> per day if you stayed at the same activity
+            level (maintenance). Your eating target is <strong>{n.dailyCalories} kcal</strong>, which leaves roughly a{" "}
+            <strong>{plannedDeficit} kcal</strong> gap — that gap is your planned deficit for fat loss.
           </p>
         )}
         {goalDir === "gain" && (
           <p className="page-lead" style={{ marginTop: 0 }}>
-            Planned surplus about <strong>{plannedSurplus}</strong> kcal/day vs estimated maintenance (~{tdee} kcal).
-            Your plan: <strong>{n.dailyCalories}</strong> kcal. Batch cooking:{" "}
-            {n.batchCooking ? "you’re open to meal prep" : "flexible"}.
+            Maintenance is estimated around <strong>{tdee} kcal</strong>/day. Your target is{" "}
+            <strong>{n.dailyCalories} kcal</strong>, about <strong>{plannedSurplus} kcal</strong> above that for a
+            controlled surplus.
           </p>
         )}
         {goalDir === "maintain" && (
           <p className="page-lead" style={{ marginTop: 0 }}>
-            Intake is set near estimated maintenance (~{tdee} kcal). Plan: <strong>{n.dailyCalories}</strong> kcal. Batch
-            cooking: {n.batchCooking ? "you’re open to meal prep" : "flexible"}.
+            Your target <strong>{n.dailyCalories} kcal</strong> is close to estimated maintenance (~{tdee} kcal) so
+            weight stays steady while you keep habits consistent.
           </p>
         )}
+        <p className="page-lead" style={{ marginBottom: "0.35rem" }}>
+          Meal slots with a recipe chosen:{" "}
+          <strong>
+            {SLOT_KEYS.length - missingRecipes} / {SLOT_KEYS.length}
+          </strong>
+          {missingRecipes > 0 ? (
+            <span className="pill bad" style={{ marginLeft: "0.35rem" }}>
+              {missingRecipes} open
+            </span>
+          ) : (
+            <span className="pill ok" style={{ marginLeft: "0.35rem" }}>
+              All set
+            </span>
+          )}
+        </p>
         <p className="page-lead" style={{ marginBottom: 0 }}>
-          Recipes not chosen yet: <strong>{missingRecipes}</strong> / {SLOT_KEYS.length} meal slots · Deload week every{" "}
-          <strong>{g.deloadEveryWeeks}</strong> weeks
+          Deload week every <strong>{g.deloadEveryWeeks}</strong> weeks
           {deloadWeek ? <span className="pill warn" style={{ marginLeft: "0.35rem" }}>Deload window</span> : null}
         </p>
       </div>
@@ -210,13 +256,19 @@ export default function Dashboard() {
       </details>
 
       <div className="card">
-        <h2>Goal check</h2>
+        <h2>Weekly goals</h2>
         <p className={profile.goalSafety.safe ? "pill ok" : "pill bad"} style={{ marginBottom: "0.5rem" }}>
           {profile.goalSafety.safe ? "Timeline looks reasonable" : "Timeline is aggressive"}
         </p>
-        <p className="page-lead" style={{ margin: 0 }}>
-          {profile.goalSafety.message}
-        </p>
+        <ul className="dash-bullet-list">
+          {((): string[] => {
+            const raw = profile.goalSafety.message.trim();
+            const parts = raw.split(/(?<=[.!?])\s+/).map((s) => s.trim()).filter(Boolean);
+            return parts.length ? parts : [raw];
+          })().map((line, i) => (
+            <li key={i}>{line}</li>
+          ))}
+        </ul>
       </div>
 
       <div className="row" style={{ gap: "0.5rem" }}>

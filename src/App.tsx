@@ -11,6 +11,7 @@ import RecipesPage from "@/pages/RecipesPage";
 import CalculatorPage from "@/pages/CalculatorPage";
 import ProgressPage from "@/pages/ProgressPage";
 import SettingsPage from "@/pages/SettingsPage";
+import AdminRecipesPage from "@/pages/AdminRecipesPage";
 
 export default function App() {
   const { firebaseReady, loading, user, profile } = useAuth();
@@ -59,6 +60,7 @@ export default function App() {
         <Route path="calc" element={<CalculatorPage />} />
         <Route path="progress" element={<ProgressPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="admin/recipes" element={<AdminRecipesPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

@@ -12,8 +12,9 @@ import {
   goalDirectionLabel,
 } from "@/lib/nutrition";
 import { buildWeeklySchedule } from "@/lib/schedule";
-import type { BodyType, GoalDirection, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
+import type { BodyType, Gender, GoalDirection, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
 import { emptyMealSlots, saveProfile } from "@/firebase/userDoc";
+import NumericInput from "@/components/NumericInput";
 
 const DOW = [
   { bit: 0, label: "Sun" },
@@ -32,6 +33,7 @@ export default function Onboarding() {
   const [err, setErr] = useState<string | null>(null);
 
   const [displayName, setDisplayName] = useState("");
+  const [gender, setGender] = useState<Gender>("prefer_not_say");
   const [heightCm, setHeightCm] = useState(165);
   const [weightKg, setWeightKg] = useState(70);
   const [bodyType, setBodyType] = useState<BodyType>("mesomorph");
@@ -139,6 +141,7 @@ export default function Onboarding() {
       : { enabled: false, cycleLengthDays: 28 };
     const profile: UserProfile = {
       displayName: displayName.trim() || user.displayName || "Athlete",
+      gender,
       heightCm,
       weightKg,
       bodyType,
@@ -180,25 +183,19 @@ export default function Onboarding() {
 
       {step === 0 && (
         <div className="card stack">
-          <label>Name</label>
-          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Your name" />
+          <label>Your name</label>
+          <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="How we’ll greet you" />
+          <label>Gender</label>
+          <select value={gender} onChange={(e) => setGender(e.target.value as Gender)}>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+            <option value="non_binary">Non-binary</option>
+            <option value="prefer_not_say">Prefer not to say</option>
+          </select>
           <label>Height (cm)</label>
-          <input
-            type="number"
-            min={120}
-            max={230}
-            value={heightCm}
-            onChange={(e) => setHeightCm(Number(e.target.value))}
-          />
+          <NumericInput min={120} max={230} value={heightCm} onValueChange={setHeightCm} />
           <label>Weight (kg)</label>
-          <input
-            type="number"
-            min={35}
-            max={250}
-            step={0.1}
-            value={weightKg}
-            onChange={(e) => setWeightKg(Number(e.target.value))}
-          />
+          <NumericInput min={35} max={250} step={0.1} value={weightKg} onValueChange={setWeightKg} />
           <label>Body type</label>
           <select value={bodyType} onChange={(e) => setBodyType(e.target.value as BodyType)}>
             <option value="ectomorph">Ectomorph (leaner, harder to gain)</option>
@@ -250,14 +247,7 @@ export default function Onboarding() {
             ))}
           </div>
           <label>Target weight (kg)</label>
-          <input
-            type="number"
-            min={35}
-            max={250}
-            step={0.1}
-            value={targetWeightKg}
-            onChange={(e) => setTargetWeightKg(Number(e.target.value))}
-          />
+          <NumericInput min={35} max={250} step={0.1} value={targetWeightKg} onValueChange={setTargetWeightKg} />
           <label>Target month / date</label>
           <input type="date" value={goalDate} onChange={(e) => setGoalDate(e.target.value)} />
           <p className={safety.safe ? "success-banner" : "error-banner"} style={{ marginTop: "0.5rem" }}>
@@ -295,13 +285,7 @@ export default function Onboarding() {
           {periodEnabled && (
             <>
               <label>Typical cycle length (days)</label>
-              <input
-                type="number"
-                min={21}
-                max={40}
-                value={cycleLengthDays}
-                onChange={(e) => setCycleLengthDays(Number(e.target.value))}
-              />
+              <NumericInput min={21} max={40} value={cycleLengthDays} onValueChange={setCycleLengthDays} />
               <label>Last period start (optional)</label>
               <input type="date" value={lastPeriodStart} onChange={(e) => setLastPeriodStart(e.target.value)} />
             </>
@@ -340,13 +324,7 @@ export default function Onboarding() {
         <div className="card stack">
           <h2>Gym, uni days & session shape</h2>
           <label>Strength days / week (on non-uni days first)</label>
-          <input
-            type="number"
-            min={2}
-            max={6}
-            value={daysPerWeek}
-            onChange={(e) => setDaysPerWeek(Number(e.target.value))}
-          />
+          <NumericInput min={2} max={6} value={daysPerWeek} onValueChange={setDaysPerWeek} />
           <label>Main gym window start</label>
           <input type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} />
           <label>Main gym window end</label>
@@ -380,33 +358,21 @@ export default function Onboarding() {
             <option value="rest">Rest / walk only</option>
           </select>
           <label>Total session length target (min)</label>
-          <input
-            type="number"
-            min={25}
-            max={75}
-            value={sessionTotalMin}
-            onChange={(e) => setSessionTotalMin(Number(e.target.value))}
-          />
+          <NumericInput min={25} max={75} value={sessionTotalMin} onValueChange={setSessionTotalMin} />
           <label>Warm-up (min)</label>
-          <input type="number" min={3} max={20} value={warmupMin} onChange={(e) => setWarmupMin(Number(e.target.value))} />
+          <NumericInput min={3} max={20} value={warmupMin} onValueChange={setWarmupMin} />
           <label>Cardio after weights (min, range)</label>
           <div className="row">
-            <input type="number" min={5} max={30} value={cardioAfterMin} onChange={(e) => setCardioAfterMin(Number(e.target.value))} />
+            <NumericInput min={5} max={30} value={cardioAfterMin} onValueChange={setCardioAfterMin} />
             <span className="muted" style={{ alignSelf: "center" }}>
               –
             </span>
-            <input type="number" min={5} max={45} value={cardioAfterMax} onChange={(e) => setCardioAfterMax(Number(e.target.value))} />
+            <NumericInput min={5} max={45} value={cardioAfterMax} onValueChange={setCardioAfterMax} />
           </div>
           <label>Deload / easier week every (weeks)</label>
-          <input
-            type="number"
-            min={2}
-            max={8}
-            value={deloadEveryWeeks}
-            onChange={(e) => setDeloadEveryWeeks(Number(e.target.value))}
-          />
+          <NumericInput min={2} max={8} value={deloadEveryWeeks} onValueChange={setDeloadEveryWeeks} />
           <label>Daily steps goal</label>
-          <input type="number" min={3000} max={20000} step={500} value={stepsGoal} onChange={(e) => setStepsGoal(Number(e.target.value))} />
+          <NumericInput min={3000} max={20000} step={500} value={stepsGoal} onValueChange={setStepsGoal} />
           <label>Where do you train?</label>
           <select value={location} onChange={(e) => setLocation(e.target.value as typeof location)}>
             <option value="home">Home</option>
@@ -452,8 +418,8 @@ export default function Onboarding() {
             Open to batch cooking (2–3 anchors per week)
           </label>
           <p className="muted">
-            Slots include pre-morning, breakfast, lunch, dinner, snacks, drinks, bedtime tea, and nighttime tea. Assign
-            recipes after onboarding.
+            Slots include pre-morning, breakfast, lunch, dinner, snacks, drinks, bedtime tea (fat-loss habit), and
+            optional evening tea (anytime). Assign recipes after onboarding.
           </p>
           <div className="card" style={{ background: "var(--bg)" }}>
             <strong>Plan preview</strong>

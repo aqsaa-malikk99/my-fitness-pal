@@ -1,5 +1,8 @@
 export type BodyType = "ectomorph" | "mesomorph" | "endomorph" | "unsure";
 
+/** Optional — used for copy and period defaults; older profiles may omit. */
+export type Gender = "female" | "male" | "non_binary" | "prefer_not_say";
+
 /** Primary nutrition goal — drives calorie target and in-app copy. */
 export type GoalDirection = "lose" | "gain" | "maintain";
 
@@ -20,6 +23,13 @@ export interface MealSlotAssignment {
 }
 
 export type MealSlots = Record<MealSlotId, MealSlotAssignment | null>;
+
+/** Stored at users/{uid}/dailyMealPlans/{YYYY-MM-DD} — explicit plan for that day only. */
+export interface DailyMealPlanDoc {
+  date: string;
+  mealAssignments: MealSlots;
+  updatedAt: string;
+}
 
 export type UniDayMode = "home" | "evening_gym" | "rest";
 
@@ -82,6 +92,7 @@ export interface NutritionTargets {
 
 export interface UserProfile {
   displayName: string;
+  gender?: Gender;
   heightCm: number;
   weightKg: number;
   bodyType: BodyType;
@@ -118,7 +129,14 @@ export interface UserProfile {
   updatedAt: string;
 }
 
-export type RecipeTag = "lunch" | "dinner" | "snacks" | "anti-inflammatory" | "batch";
+export type RecipeTag =
+  | "lunch"
+  | "dinner"
+  | "snacks"
+  | "anti-inflammatory"
+  | "batch"
+  | "tea"
+  | "original";
 
 export interface CustomRecipe {
   id: string;
@@ -166,6 +184,9 @@ export interface ProgressEntry {
   notes?: string;
 }
 
+/** How a food-log row was created (for grouping and display). */
+export type FoodLogEntryKind = "smart_portion" | "manual_meal" | "meal_slot";
+
 export interface CalculatorEntry {
   id: string;
   date: string;
@@ -174,6 +195,15 @@ export interface CalculatorEntry {
   proteinG?: number;
   carbsG?: number;
   fatG?: number;
+  /** Set when this row was created from checking off a meal slot on the Meals page */
+  fromMealSlot?: MealSlotId;
+  entryKind?: FoodLogEntryKind;
+  /** User-tagged meal bucket (breakfast, lunch, snack, tea, …) */
+  taggedMealSlot?: MealSlotId;
+  ingredientsNote?: string;
+  instructionsNote?: string;
+  /** users/{uid}/recipes/{id} when this log was also saved as a user recipe */
+  savedRecipeId?: string;
 }
 
 export interface DailyLogDoc {

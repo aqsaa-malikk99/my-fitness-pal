@@ -1,17 +1,9 @@
 import { buildWeeklySchedule } from "@/lib/schedule";
 import type { GymPlan, GoalDirection, MealSlots, MealSlotId, NutritionTargets, UserProfile } from "@/types/profile";
+import { MEAL_SLOT_ORDER } from "@/lib/mealSlotOrder";
 import { defaultMealTimeHints, evaluateGoalSafety, inferGoalDirection, splitMealCalories } from "@/lib/nutrition";
 
-const ALL_SLOTS: MealSlotId[] = [
-  "preMorning",
-  "breakfast",
-  "lunch",
-  "dinner",
-  "snacks",
-  "drinks",
-  "bedtimeTea",
-  "nighttimeTea",
-];
+const ALL_SLOTS: MealSlotId[] = MEAL_SLOT_ORDER;
 
 export function emptyMealSlots(): MealSlots {
   return {

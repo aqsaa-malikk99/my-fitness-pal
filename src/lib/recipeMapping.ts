@@ -28,6 +28,12 @@ export function categoryToMealTypes(category: string, nameLower: string): MealSl
   return ["lunch"];
 }
 
+function tagsForRow(row: JsonRecipeRow): UserRecipeDoc["tags"] | undefined {
+  const c = row.category.trim().toLowerCase();
+  if (c === "tea" || row.name.toLowerCase().includes("tea")) return ["tea"];
+  return undefined;
+}
+
 export function jsonRowToUserRecipeDoc(row: JsonRecipeRow, now: string): UserRecipeDoc {
   const nameLower = row.name.toLowerCase();
   return {
@@ -43,6 +49,7 @@ export function jsonRowToUserRecipeDoc(row: JsonRecipeRow, now: string): UserRec
     instructions: row.instructions,
     source: row.source,
     mealTypes: categoryToMealTypes(row.category, nameLower),
+    tags: tagsForRow(row),
     createdAt: now,
     updatedAt: now,
   };

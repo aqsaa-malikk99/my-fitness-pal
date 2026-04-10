@@ -18,12 +18,14 @@ import {
 import { firebaseConfigured, getFirebaseAuth, googleProvider } from "@/firebase/config";
 import { loadProfile } from "@/firebase/userDoc";
 import type { UserProfile } from "@/types/profile";
+import { isAdminEmail } from "@/lib/admin";
 
 type AuthState = {
   user: User | null;
   profile: UserProfile | null;
   loading: boolean;
   firebaseReady: boolean;
+  isAdmin: boolean;
   authNotice: string | null;
   clearAuthNotice: () => void;
   refreshProfile: () => Promise<void>;
@@ -122,19 +124,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, [ready]);
 
+  const isAdmin = useMemo(() => isAdminEmail(user?.email ?? undefined), [user?.email]);
+
   const value = useMemo(
     () => ({
       user,
       profile,
       loading,
       firebaseReady: ready,
+      isAdmin,
       authNotice,
       clearAuthNotice,
       refreshProfile,
       loginWithGoogle,
       logout,
     }),
-    [user, profile, loading, ready, authNotice, clearAuthNotice, refreshProfile, loginWithGoogle, logout],
+    [user, profile, loading, ready, isAdmin, authNotice, clearAuthNotice, refreshProfile, loginWithGoogle, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

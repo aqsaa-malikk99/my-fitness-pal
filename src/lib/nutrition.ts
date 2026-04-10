@@ -229,7 +229,7 @@ export function defaultMealTimeHints(): Record<import("@/types/profile").MealSlo
     snacks: "10:30 or 15:30",
     drinks: "Through the day",
     bedtimeTea: "21:00–21:30",
-    nighttimeTea: "22:00 (caffeine-free)",
+    nighttimeTea: "Optional · anytime",
   };
 }
 
@@ -303,4 +303,35 @@ export function buildGymPlanText(gym: import("@/types/profile").GymPlan): string
   const machines =
     gym.machines.length > 0 ? `Equipment focus: ${gym.machines.slice(0, 6).join(", ")}.` : "";
   return `${days}, preferred window ${window}. ${uni}${session}${deload}${loc} ${cardio} ${machines}`;
+}
+
+/** Short bullets for the plan summary card (easier to scan than a single paragraph). */
+export function buildGymPlanBullets(gym: import("@/types/profile").GymPlan): string[] {
+  const out: string[] = [];
+  out.push(`${gym.daysPerWeek} training days per week`);
+  out.push(`Preferred window: ${gym.windowStart}–${gym.windowEnd}`);
+  if (gym.uniDayIndices?.length) {
+    const names = gym.uniDayIndices.map((d) => ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d]).join(", ");
+    out.push(`Lighter uni days: ${names} (${gym.uniDayMode.replace("_", " ")})`);
+  }
+  out.push(
+    `Sessions ~${gym.sessionTotalMin ?? 38} min total (~${gym.warmupMin ?? 5} min warm-up); after lifting, ${gym.cardioAfterWeightsMin ?? 10}–${gym.cardioAfterWeightsMax ?? 15} min easy cardio`,
+  );
+  out.push(`Deload / easier week every ~${gym.deloadEveryWeeks ?? 4} weeks`);
+  out.push(
+    gym.likesCardio
+      ? `Extra easy cardio budget ~${gym.cardioMinutesRecommended} min/week beyond post-lift finishers`
+      : "Structured cardio optional — daily steps still count",
+  );
+  out.push(
+    gym.location === "home"
+      ? "Home setup: dumbbells, bands, bench when possible"
+      : gym.location === "gym"
+        ? "Gym: use your listed machines for steady progression"
+        : "Mixed home + gym: pick one main location when you can",
+  );
+  if (gym.machines.length > 0) {
+    out.push(`Equipment: ${gym.machines.slice(0, 8).join(", ")}`);
+  }
+  return out;
 }

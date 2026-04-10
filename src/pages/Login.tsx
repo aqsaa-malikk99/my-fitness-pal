@@ -1,4 +1,5 @@
 import { useAuth } from "@/context/AuthContext";
+import AppLogo from "@/components/AppLogo";
 
 export default function Login() {
   const { loginWithGoogle, loading, authNotice, clearAuthNotice } = useAuth();
@@ -6,7 +7,9 @@ export default function Login() {
   return (
     <div className="app-shell" style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
       <div className="page-title">
-        <h1 className="app-page-title">Fitness Pal</h1>
+        <div className="login-logo-wrap">
+          <AppLogo height={120} />
+        </div>
         <p className="page-lead">
           Train, eat, and track progress in one place — whether you are cutting, bulking, or maintaining. Syncs with your
           Google account.

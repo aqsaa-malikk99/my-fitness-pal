@@ -21,6 +21,7 @@ export default function ProgressPage() {
   const [notes, setNotes] = useState("");
   const [steps, setSteps] = useState("");
   const [busy, setBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user) return;
@@ -54,6 +55,8 @@ export default function ProgressPage() {
     setNotes("");
     await refresh();
     setBusy(false);
+    setToast("Saved. Home updates with your latest steps, weight, and BMI trend when you log them.");
+    window.setTimeout(() => setToast(null), 5000);
   }
 
   async function remove(id: string) {
@@ -75,8 +78,11 @@ export default function ProgressPage() {
     <div className="app-shell">
       <h1 className="app-page-title">Progress</h1>
       <p className="page-lead">
-        Log weight, steps, measurements, and notes. Entries stay in your history until you remove them.
+        Log weight and steps anytime. Arms, waist, and hips are optional — skip them if you only care about weight and
+        movement. Entries stay in your history until you remove them.
       </p>
+
+      {toast && <div className="success-banner">{toast}</div>}
 
       <div className="card stack">
         <h2>New entry</h2>
@@ -86,8 +92,8 @@ export default function ProgressPage() {
         <input value={weightKg} onChange={(e) => setWeightKg(e.target.value)} placeholder="optional" />
         <label>Steps today (optional)</label>
         <input
-          type="number"
-          min={0}
+          type="text"
+          inputMode="numeric"
           value={steps}
           onChange={(e) => setSteps(e.target.value)}
           placeholder="e.g. 8420"
@@ -97,18 +103,21 @@ export default function ProgressPage() {
             ~{stepsToKcalBurned(Number(steps), profile.weightKg)} kcal burn estimate from steps
           </p>
         )}
+        <p className="muted" style={{ margin: "0 0 0.35rem", fontSize: "0.8rem" }}>
+          Optional measurements — leave blank if you’re only tracking steps and weight.
+        </p>
         <div className="row">
           <div style={{ flex: 1 }}>
             <label>Arms (cm)</label>
-            <input value={armsCm} onChange={(e) => setArmsCm(e.target.value)} />
+            <input value={armsCm} onChange={(e) => setArmsCm(e.target.value)} placeholder="skip" />
           </div>
           <div style={{ flex: 1 }}>
             <label>Waist (cm)</label>
-            <input value={waistCm} onChange={(e) => setWaistCm(e.target.value)} />
+            <input value={waistCm} onChange={(e) => setWaistCm(e.target.value)} placeholder="skip" />
           </div>
           <div style={{ flex: 1 }}>
             <label>Hips (cm)</label>
-            <input value={hipsCm} onChange={(e) => setHipsCm(e.target.value)} />
+            <input value={hipsCm} onChange={(e) => setHipsCm(e.target.value)} placeholder="skip" />
           </div>
         </div>
         <label>Injury / pain note</label>

@@ -29,10 +29,10 @@ export default defineConfig({
     spa404Fallback(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["pwa-192.png", "pwa-512.png", ".nojekyll"],
+      includeAssets: ["pwa-192.png", "pwa-512.png", "app-logo.png", ".nojekyll"],
       manifest: {
-        name: "Fitness Pal",
-        short_name: "FitnessPal",
+        name: "MyFitness Gal",
+        short_name: "MyFitnessGal",
         description: "Goals, meals, gym plan, and progress",
         theme_color: "#0f172a",
         background_color: "#0f172a",

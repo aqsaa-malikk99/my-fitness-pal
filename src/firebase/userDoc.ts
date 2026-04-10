@@ -19,6 +19,9 @@ import type {
   CalculatorEntry,
   CustomRecipe,
   DailyLogDoc,
+  DailyMealPlanDoc,
+  MealSlotId,
+  MealSlots,
   ProgressEntry,
   UserProfile,
   UserRecipe,
@@ -29,6 +32,7 @@ import { datasetDocId, jsonRowToUserRecipeDoc } from "@/lib/recipeMapping";
 import { stripUndefinedDeep } from "@/lib/firestoreSanitize";
 import { getDb } from "./config";
 import { migrateProfile, emptyMealSlots } from "@/lib/profileMigrate";
+import { MEAL_SLOT_ORDER } from "@/lib/mealSlotOrder";
 
 const userPath = (uid: string) => `users/${uid}`;
 
@@ -158,8 +162,41 @@ export async function setUserRecipeFull(
   await setDoc(doc(db, userPath(uid), "recipes", recipeDocId), stripUndefinedDeep(data) as DocumentData);
 }
 
+function stripRecipeIdFromMealSlots(
+  slots: MealSlots | undefined,
+  recipeId: string
+): { next: MealSlots; changed: boolean } {
+  const base = slots ?? emptyMealSlots();
+  const next: MealSlots = { ...base };
+  let changed = false;
+  for (const slot of MEAL_SLOT_ORDER) {
+    const a = base[slot];
+    if (a?.recipeId === recipeId) {
+      next[slot] = null;
+      changed = true;
+    }
+  }
+  return { next, changed };
+}
+
+/** Clears this recipe from the rolling template and every saved day plan. */
+export async function removeRecipeFromAllMealPlans(uid: string, recipeDocId: string, database?: Firestore): Promise<void> {
+  const db = database ?? getDb();
+  const profile = await loadProfile(uid, db);
+  if (profile) {
+    const { next, changed } = stripRecipeIdFromMealSlots(profile.mealAssignments, recipeDocId);
+    if (changed) await updateProfilePartial(uid, { mealAssignments: next }, db);
+  }
+  const map = await listDailyMealPlansMap(uid, db);
+  for (const [date, assignments] of map) {
+    const { next, changed } = stripRecipeIdFromMealSlots(assignments, recipeDocId);
+    if (changed) await saveDailyMealPlan(uid, date, next, db);
+  }
+}
+
 export async function deleteUserRecipe(uid: string, recipeDocId: string, database?: Firestore): Promise<void> {
   const db = database ?? getDb();
+  await removeRecipeFromAllMealPlans(uid, recipeDocId, db);
   await deleteDoc(doc(db, userPath(uid), "recipes", recipeDocId));
 }
 
@@ -202,6 +239,51 @@ export async function getDailyLog(
   const snap = await getDoc(doc(db, userPath(uid), "dailyLogs", date));
   if (!snap.exists()) return null;
   return snap.data() as DailyLogDoc;
+}
+
+export async function getDailyMealPlan(
+  uid: string,
+  date: string,
+  database?: Firestore
+): Promise<DailyMealPlanDoc | null> {
+  const db = database ?? getDb();
+  const snap = await getDoc(doc(db, userPath(uid), "dailyMealPlans", date));
+  if (!snap.exists()) return null;
+  return snap.data() as DailyMealPlanDoc;
+}
+
+/** Persists explicit meal assignments for one calendar day only (does not change other days). */
+export async function saveDailyMealPlan(
+  uid: string,
+  date: string,
+  mealAssignments: MealSlots,
+  database?: Firestore
+): Promise<void> {
+  const db = database ?? getDb();
+  await setDoc(
+    doc(db, userPath(uid), "dailyMealPlans", date),
+    stripUndefinedDeep({
+      date,
+      mealAssignments,
+      updatedAt: new Date().toISOString(),
+    }) as DocumentData,
+    { merge: true }
+  );
+}
+
+/** All days with an explicit saved meal plan (for calendar dots + resolution). */
+export async function listDailyMealPlansMap(
+  uid: string,
+  database?: Firestore
+): Promise<Map<string, MealSlots>> {
+  const db = database ?? getDb();
+  const snap = await getDocs(collection(db, userPath(uid), "dailyMealPlans"));
+  const m = new Map<string, MealSlots>();
+  for (const d of snap.docs) {
+    const data = d.data() as DailyMealPlanDoc;
+    if (data.mealAssignments) m.set(d.id, data.mealAssignments);
+  }
+  return m;
 }
 
 export async function saveDailyLog(
@@ -252,4 +334,20 @@ export async function addCalculatorItem(
 export async function deleteCalculatorItem(uid: string, itemId: string, database?: Firestore): Promise<void> {
   const db = database ?? getDb();
   await deleteDoc(doc(db, userPath(uid), "foodLog", itemId));
+}
+
+/** Removes food-log rows tied to a meal-slot check (used when unchecking a slot). */
+export async function deleteFoodLogEntriesForMealSlot(
+  uid: string,
+  date: string,
+  slot: MealSlotId,
+  database?: Firestore,
+): Promise<void> {
+  const items = await listCalculatorDay(uid, date, database);
+  const db = database ?? getDb();
+  for (const i of items) {
+    if (i.fromMealSlot === slot) {
+      await deleteDoc(doc(db, userPath(uid), "foodLog", i.id));
+    }
+  }
 }

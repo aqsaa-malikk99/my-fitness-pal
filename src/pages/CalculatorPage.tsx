@@ -16,6 +16,7 @@ import {
   splitIngredients,
 } from "@/lib/foodLog";
 import { assignRecipeToMealPlan } from "@/lib/recipeAssign";
+import NumericInput from "@/components/NumericInput";
 
 type PortionUnit = "g" | "oz" | "cup" | "tbsp" | "tsp";
 
@@ -347,37 +348,37 @@ export default function CalculatorPage() {
             <div className="row">
               <div style={{ flex: 1 }}>
                 <label>kcal / serving</label>
-                <input type="number" min={0} value={calPerServing} onChange={(e) => setCalPerServing(Number(e.target.value))} />
+                <NumericInput min={0} value={calPerServing} onValueChange={setCalPerServing} />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Serving size (g)</label>
-                <input type="number" min={1} value={serveG} onChange={(e) => setServeG(Number(e.target.value))} />
+                <NumericInput min={1} value={serveG} onValueChange={setServeG} />
               </div>
             </div>
             <div className="row">
               <div style={{ flex: 1 }}>
                 <label>Protein g / serving</label>
-                <input type="number" min={0} value={pPerServe} onChange={(e) => setPPerServe(Number(e.target.value))} />
+                <NumericInput min={0} value={pPerServe} onValueChange={setPPerServe} />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Carbs g / serving</label>
-                <input type="number" min={0} value={cPerServe} onChange={(e) => setCPerServe(Number(e.target.value))} />
+                <NumericInput min={0} value={cPerServe} onValueChange={setCPerServe} />
               </div>
             </div>
             <div className="row">
               <div style={{ flex: 1 }}>
                 <label>Fat g / serving</label>
-                <input type="number" min={0} value={fPerServe} onChange={(e) => setFPerServe(Number(e.target.value))} />
+                <NumericInput min={0} value={fPerServe} onValueChange={setFPerServe} />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Sodium mg / serving</label>
-                <input type="number" min={0} value={sodiumMg} onChange={(e) => setSodiumMg(Number(e.target.value))} />
+                <NumericInput min={0} value={sodiumMg} onValueChange={setSodiumMg} />
               </div>
             </div>
             <div className="row">
               <div style={{ flex: 1 }}>
                 <label>Amount you took</label>
-                <input type="number" min={0} step={0.1} value={amt} onChange={(e) => setAmt(Number(e.target.value))} />
+                <NumericInput min={0} step={0.1} value={amt} onValueChange={setAmt} />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Unit</label>
@@ -433,19 +434,19 @@ export default function CalculatorPage() {
               ))}
             </select>
             <label>Calories</label>
-            <input type="number" min={1} value={calories} onChange={(e) => setCalories(Number(e.target.value))} />
+            <NumericInput min={1} value={calories} onValueChange={setCalories} />
             <div className="row">
               <div style={{ flex: 1 }}>
                 <label>Protein g</label>
-                <input type="number" min={0} value={proteinG} onChange={(e) => setProteinG(Number(e.target.value))} />
+                <NumericInput min={0} value={proteinG} onValueChange={setProteinG} />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Carbs g</label>
-                <input type="number" min={0} value={carbsG} onChange={(e) => setCarbsG(Number(e.target.value))} />
+                <NumericInput min={0} value={carbsG} onValueChange={setCarbsG} />
               </div>
               <div style={{ flex: 1 }}>
                 <label>Fat g</label>
-                <input type="number" min={0} value={fatG} onChange={(e) => setFatG(Number(e.target.value))} />
+                <NumericInput min={0} value={fatG} onValueChange={setFatG} />
               </div>
             </div>
             <label>Ingredients (optional, one per line)</label>
