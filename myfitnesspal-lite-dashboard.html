@@ -3,40 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#E8F0EA" />
+  <meta name="theme-color" content="#1a3d32" />
+  <meta name="description" content="Personal fitness and nutrition planner — workouts, meals, recipes, progress." />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MFP Lite" />
   <title>MyFitnessPal Lite – Personal Dashboard</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <style>
     :root {
-      --bg: #F4F7F5;
-      --surface: #FFFFFF;
-      --surface-2: #EEF5F0;
-      --text: #1E2D24;
-      --muted: #5C7268;
-      --accent: #2D6A4F;
-      --accent-soft: #D8EDE3;
+      --bg: #0d1f18;
+      --bg-mid: #1a3d32;
+      --surface: rgba(255, 255, 255, 0.72);
+      --surface-2: rgba(255, 255, 255, 0.45);
+      --glass-border: rgba(255, 255, 255, 0.55);
+      --glass-highlight: rgba(255, 255, 255, 0.95);
+      --text: #0f1c16;
+      --muted: #3d5348;
+      --accent: #1b5e45;
+      --accent-soft: rgba(45, 106, 79, 0.22);
       --warning: #BC6C25;
-      --border: #D5E0D8;
-      --shadow: 0 4px 20px rgba(30, 45, 36, 0.08);
-      --radius: 14px;
-      --radius-sm: 10px;
+      --border: rgba(45, 90, 72, 0.18);
+      --shadow: 0 8px 32px rgba(8, 28, 22, 0.12);
+      --shadow-glass: 0 8px 32px rgba(13, 40, 32, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.65);
+      --radius: 18px;
+      --radius-sm: 12px;
       --font: "Segoe UI", system-ui, -apple-system, sans-serif;
       --safe-bottom: env(safe-area-inset-bottom, 0);
       --tab-h: 56px;
+      --blur: 18px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html { font-size: 16px; scroll-behavior: smooth; }
     body {
       font-family: var(--font);
-      background: var(--bg);
       color: var(--text);
       line-height: 1.5;
       min-height: 100dvh;
       padding-bottom: calc(var(--tab-h) + var(--safe-bottom) + 12px);
+      position: relative;
+      background: linear-gradient(145deg, #0a1612 0%, var(--bg-mid) 42%, #234d3f 78%, #2d6a4f 100%);
+      background-attachment: fixed;
+    }
+    body::before,
+    body::after {
+      content: "";
+      position: fixed;
+      pointer-events: none;
+      z-index: 0;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.45;
+    }
+    body::before {
+      width: min(90vw, 420px);
+      height: min(90vw, 420px);
+      top: -8%;
+      right: -12%;
+      background: radial-gradient(circle, rgba(120, 200, 170, 0.5) 0%, transparent 70%);
+    }
+    body::after {
+      width: min(100vw, 520px);
+      height: min(100vw, 520px);
+      bottom: 5%;
+      left: -25%;
+      background: radial-gradient(circle, rgba(60, 130, 200, 0.28) 0%, transparent 65%);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      .panel { animation: none !important; }
     }
     .app-header {
-      background: linear-gradient(135deg, var(--accent-soft), var(--bg));
+      -webkit-backdrop-filter: blur(var(--blur)) saturate(1.35);
+      backdrop-filter: blur(var(--blur)) saturate(1.35);
+      background: linear-gradient(
+        180deg,
+        rgba(255, 255, 255, 0.55) 0%,
+        rgba(255, 255, 255, 0.28) 100%
+      );
+      border-bottom: 1px solid var(--glass-border);
+      box-shadow: 0 4px 24px rgba(8, 28, 22, 0.08);
       padding: 1rem 1rem 0.75rem;
-      border-bottom: 1px solid var(--border);
       position: sticky;
       top: 0;
       z-index: 20;
@@ -55,20 +106,32 @@
       max-width: 720px;
       margin: 0 auto;
       padding: 1rem;
+      position: relative;
+      z-index: 1;
     }
     .panel { display: none; animation: fadeIn 0.2s ease; }
     .panel.active { display: block; }
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(4px); }
+      from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
     }
     .card {
+      -webkit-backdrop-filter: blur(var(--blur)) saturate(1.2);
+      backdrop-filter: blur(var(--blur)) saturate(1.2);
       background: var(--surface);
       border-radius: var(--radius);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-glass);
       padding: 1rem 1.1rem;
       margin-bottom: 0.85rem;
+      transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.2s ease;
+    }
+    @media (hover: hover) {
+      .card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 40px rgba(8, 28, 22, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+        border-color: rgba(255, 255, 255, 0.75);
+      }
     }
     .card h2, .card h3 {
       font-size: 0.95rem;
@@ -104,10 +167,14 @@
     }
     @media (max-width: 520px) { .grid-2 { grid-template-columns: 1fr; } }
     .stat {
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
       background: var(--surface-2);
       border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.4);
       padding: 0.75rem;
       text-align: center;
+      transition: background 0.2s ease, border-color 0.2s ease;
     }
     .stat .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
     .stat .value { font-size: 1.35rem; font-weight: 700; color: var(--accent); }
@@ -155,15 +222,24 @@
       .day-strip { grid-template-columns: repeat(4, 1fr); }
     }
     .day-cell {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      background: rgba(255, 255, 255, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.45);
       border-radius: var(--radius-sm);
       padding: 8px 4px;
       text-align: center;
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
     }
-    .day-cell.uni { border-color: #7BA7D9; background: #EEF6FC; }
-    .day-cell.cycle { border-color: #E5989B; background: #FDF2F3; }
-    .day-cell.rest { background: var(--surface-2); }
+    .day-cell.uni {
+      border-color: rgba(100, 150, 220, 0.55);
+      background: rgba(210, 230, 255, 0.45);
+    }
+    .day-cell.cycle {
+      border-color: rgba(220, 140, 150, 0.5);
+      background: rgba(255, 220, 228, 0.42);
+    }
+    .day-cell.rest { background: rgba(255, 255, 255, 0.28); }
     .day-cell strong { display: block; font-size: 0.7rem; margin-bottom: 4px; }
     .meal-timing .row {
       display: grid;
@@ -196,13 +272,22 @@
       padding: 8px 12px;
       font-size: 0.72rem;
       font-weight: 600;
-      border: 1px solid var(--border);
-      background: var(--surface);
+      border: 1px solid rgba(255, 255, 255, 0.45);
+      background: rgba(255, 255, 255, 0.4);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
       color: var(--muted);
       border-radius: 999px;
       cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
     }
-    .recipe-filters button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .recipe-filters button:active { transform: scale(0.97); }
+    .recipe-filters button.active {
+      background: linear-gradient(165deg, #2d865f, var(--accent));
+      color: #fff;
+      border-color: rgba(255, 255, 255, 0.35);
+      box-shadow: 0 4px 14px rgba(19, 71, 50, 0.3);
+    }
     .recipe-meta-bar {
       font-size: 0.75rem;
       color: var(--muted);
@@ -219,12 +304,21 @@
     .recipe-section-title:first-child { margin-top: 0; }
     .recipe-list { list-style: none; }
     .recipe-item {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      background: rgba(255, 255, 255, 0.62);
+      border: 1px solid var(--glass-border);
       border-radius: var(--radius-sm);
       padding: 0.85rem 1rem;
       margin-bottom: 10px;
-      box-shadow: 0 1px 8px rgba(30, 45, 36, 0.04);
+      box-shadow: 0 4px 20px rgba(8, 28, 22, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    @media (hover: hover) {
+      .recipe-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 28px rgba(8, 28, 22, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.75);
+      }
     }
     .recipe-item h3 { font-size: 0.9rem; font-weight: 600; margin: 4px 0 6px; line-height: 1.3; }
     .recipe-item .tag-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -271,13 +365,16 @@
       color: var(--muted);
       margin: 8px 0 4px;
     }
-    input, select, textarea, button {
+    input, select, textarea {
       font: inherit;
       width: 100%;
       padding: 10px 12px;
-      border: 1px solid var(--border);
+      border: 1px solid rgba(255, 255, 255, 0.5);
       border-radius: var(--radius-sm);
-      background: var(--surface);
+      background: rgba(255, 255, 255, 0.55);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
     }
     input:focus, select:focus, textarea:focus {
       outline: 2px solid var(--accent-soft);
@@ -286,24 +383,42 @@
     .calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     @media (max-width: 520px) { .calc-row { grid-template-columns: 1fr; } }
     .calc-out {
-      background: var(--accent-soft);
+      -webkit-backdrop-filter: blur(10px);
+      backdrop-filter: blur(10px);
+      background: rgba(45, 106, 79, 0.18);
+      border: 1px solid rgba(255, 255, 255, 0.35);
       border-radius: var(--radius-sm);
       padding: 12px;
       margin-top: 12px;
       font-size: 0.85rem;
     }
     .calc-out div { display: flex; justify-content: space-between; margin: 4px 0; }
+    button:not(.tab-bar button):not(.recipe-filters button) {
+      font: inherit;
+    }
     .btn {
       cursor: pointer;
-      background: var(--accent);
+      width: 100%;
+      background: linear-gradient(165deg, #2d865f 0%, var(--accent) 55%, #134732 100%);
       color: #fff;
-      border: none;
+      border: 1px solid rgba(255, 255, 255, 0.25);
       font-weight: 600;
       padding: 12px;
       border-radius: var(--radius-sm);
       margin-top: 8px;
+      box-shadow: 0 4px 16px rgba(19, 71, 50, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+      transition: transform 0.15s ease, box-shadow 0.2s ease, filter 0.2s ease;
     }
-    .btn.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    .btn:active {
+      transform: scale(0.98);
+      filter: brightness(0.95);
+    }
+    .btn.secondary {
+      background: rgba(255, 255, 255, 0.35);
+      color: var(--text);
+      border: 1px solid var(--glass-border);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    }
     table.data {
       width: 100%;
       font-size: 0.78rem;
@@ -323,14 +438,16 @@
       right: 0;
       height: calc(var(--tab-h) + var(--safe-bottom));
       padding-bottom: var(--safe-bottom);
-      background: var(--surface);
-      border-top: 1px solid var(--border);
+      -webkit-backdrop-filter: blur(20px) saturate(1.4);
+      backdrop-filter: blur(20px) saturate(1.4);
+      background: linear-gradient(0deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 255, 255, 0.42) 100%);
+      border-top: 1px solid var(--glass-border);
       display: flex;
       justify-content: space-around;
       align-items: flex-start;
       padding-top: 6px;
       z-index: 100;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+      box-shadow: 0 -8px 32px rgba(8, 28, 22, 0.12);
     }
     .tab-bar button {
       flex: 1;
@@ -357,14 +474,71 @@
       white-space: pre-wrap;
       word-break: break-word;
     }
+    .panel > p.card-sub:first-of-type,
+    .panel > .section-title:first-child {
+      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(14px);
+      background: rgba(255, 255, 255, 0.58);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      padding: 0.9rem 1rem;
+      box-shadow: var(--shadow-glass);
+      margin-bottom: 0.75rem;
+    }
     .section-title {
       font-size: 1rem;
       font-weight: 700;
       margin: 1rem 0 0.5rem;
     }
+    .panel > .section-title:first-child {
+      margin-top: 0;
+    }
     .hint { font-size: 0.72rem; color: var(--muted); margin-top: 6px; }
     .prep-grid { font-size: 0.8rem; color: var(--muted); }
     .prep-grid strong { color: var(--text); }
+    .install-banner {
+      position: fixed;
+      bottom: calc(var(--tab-h) + var(--safe-bottom) + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: min(94vw, 400px);
+      z-index: 95;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      -webkit-backdrop-filter: blur(16px) saturate(1.2);
+      backdrop-filter: blur(16px) saturate(1.2);
+      background: rgba(255, 255, 255, 0.78);
+      border: 1px solid var(--glass-border);
+      box-shadow: var(--shadow-glass);
+      font-size: 0.78rem;
+      color: var(--text);
+    }
+    .install-banner[hidden] { display: none !important; }
+    .install-banner .install-msg { flex: 1 1 140px; text-align: center; line-height: 1.4; }
+    .install-banner .btn.install-go {
+      width: auto;
+      margin: 0;
+      padding: 8px 16px;
+      font-size: 0.75rem;
+    }
+    .install-dismiss {
+      width: auto;
+      margin: 0;
+      padding: 6px 10px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.25rem;
+      line-height: 1;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+    }
+    .install-dismiss:hover { color: var(--text); }
   </style>
 </head>
 <body>
@@ -747,6 +921,12 @@
     <button type="button" data-tab="notes"><span class="ico">✎</span>Notes</button>
   </nav>
 
+  <div id="installBanner" class="install-banner" role="region" aria-label="Install app" hidden>
+    <span class="install-msg">Install as an app for quick access and offline use.</span>
+    <button type="button" class="btn install-go" id="installBtn">Install</button>
+    <button type="button" class="install-dismiss" id="installDismiss" aria-label="Dismiss">×</button>
+  </div>
+
   <script src="recipes-data.js"></script>
   <script>
   (function () {
@@ -1119,6 +1299,45 @@
         '  // Security: lock writes with rules so each uid can only write their data.',
         '*/'
       ].join('\n');
+    }
+  })();
+  </script>
+  <script>
+  (function () {
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(function () {});
+      });
+    }
+    var banner = document.getElementById('installBanner');
+    var btn = document.getElementById('installBtn');
+    var dismiss = document.getElementById('installDismiss');
+    var deferred = null;
+    var standalone =
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+    if (!banner || standalone) return;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      deferred = e;
+      if (sessionStorage.getItem('mfp_install_dismissed') === '1') return;
+      banner.hidden = false;
+    });
+    if (btn) {
+      btn.addEventListener('click', function () {
+        if (!deferred) return;
+        deferred.prompt();
+        deferred.userChoice.finally(function () {
+          deferred = null;
+          banner.hidden = true;
+        });
+      });
+    }
+    if (dismiss) {
+      dismiss.addEventListener('click', function () {
+        sessionStorage.setItem('mfp_install_dismissed', '1');
+        banner.hidden = true;
+      });
     }
   })();
   </script>
