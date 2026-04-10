@@ -22,14 +22,54 @@ const slotLabels: Record<MealSlotId, string> = {
   nighttimeTea: "Nighttime tea",
 };
 
-const TAG_OPTS: { id: RecipeTag | "all"; label: string }[] = [
-  { id: "all", label: "All tags" },
-  { id: "lunch", label: "Lunch" },
-  { id: "dinner", label: "Dinner" },
-  { id: "snacks", label: "Snacks" },
-  { id: "anti-inflammatory", label: "Anti-inflammatory" },
-  { id: "batch", label: "Batch cooking" },
+/** When a recipe exceeds a slot budget, reduce other slots in this order until the overflow is absorbed. */
+const DONOR_SLOT_PRIORITY: MealSlotId[] = [
+  "lunch",
+  "dinner",
+  "snacks",
+  "preMorning",
+  "breakfast",
+  "drinks",
+  "bedtimeTea",
+  "nighttimeTea",
 ];
+
+const MIN_SLOT_BUDGET_KCAL = 50;
+
+function donorSlotsFor(target: MealSlotId): MealSlotId[] {
+  return DONOR_SLOT_PRIORITY.filter((s) => s !== target);
+}
+
+/**
+ * Raises `target` slot to `recipeCalories` and subtracts the overflow from other slots (min budget each).
+ * Returns null if overflow cannot be fully absorbed.
+ */
+function computeSlotRedistribution(
+  slotCalories: Record<MealSlotId, number>,
+  target: MealSlotId,
+  recipeCalories: number,
+): { next: Record<MealSlotId, number>; lines: string[] } | null {
+  const cap = slotCalories[target];
+  if (recipeCalories <= cap) return { next: { ...slotCalories }, lines: [] };
+  const overflow = recipeCalories - cap;
+  const next = { ...slotCalories };
+  next[target] = recipeCalories;
+  const lines: string[] = [];
+  let left = overflow;
+  for (const d of donorSlotsFor(target)) {
+    if (left <= 0) break;
+    const before = next[d];
+    const canGive = Math.max(0, before - MIN_SLOT_BUDGET_KCAL);
+    const take = Math.min(left, canGive);
+    if (take > 0) {
+      next[d] = before - take;
+      lines.push(`${slotLabels[d]}: ${before} → ${next[d]} kcal`);
+      left -= take;
+    }
+  }
+  if (left > 0) return null;
+  return { next, lines };
+}
 
 function asRecipeRows(raw: unknown): JsonRecipeRow[] {
   if (!Array.isArray(raw)) return [];
@@ -42,9 +82,9 @@ export default function RecipesPage() {
   const { user, profile, refreshProfile } = useAuth();
   const [recipes, setRecipes] = useState<UserRecipe[]>([]);
   const [seeding, setSeeding] = useState(false);
-  const [filter, setFilter] = useState<MealSlotId | "all">("all");
   const [catFilter, setCatFilter] = useState<string>("all");
-  const [tagFilter, setTagFilter] = useState<RecipeTag | "all">("all");
+  const [calMin, setCalMin] = useState<string>("");
+  const [calMax, setCalMax] = useState<string>("");
   const [msg, setMsg] = useState<string | null>(null);
   const [assignSlot, setAssignSlot] = useState<MealSlotId>("breakfast");
   const [editing, setEditing] = useState<UserRecipe | null>(null);
@@ -93,22 +133,42 @@ export default function RecipesPage() {
 
   const filtered = useMemo(() => {
     let list = recipes;
-    if (filter !== "all") list = list.filter((r) => r.mealTypes.includes(filter));
     if (catFilter !== "all") list = list.filter((r) => r.category === catFilter);
-    if (tagFilter !== "all") list = list.filter((r) => r.tags?.includes(tagFilter));
+    const minN = calMin.trim() === "" ? null : Number(calMin);
+    const maxN = calMax.trim() === "" ? null : Number(calMax);
+    if (minN !== null && !Number.isNaN(minN)) list = list.filter((r) => r.calories >= minN);
+    if (maxN !== null && !Number.isNaN(maxN)) list = list.filter((r) => r.calories <= maxN);
     return list;
-  }, [recipes, filter, catFilter, tagFilter]);
+  }, [recipes, catFilter, calMin, calMax]);
 
   async function assign(r: UserRecipe) {
     if (!user || !profile) return;
     setMsg(null);
     const cap = profile.nutrition.slotCalories[assignSlot];
+    let nextNutrition = profile.nutrition;
+
     if (r.calories > cap) {
-      setMsg(`"${r.name}" is ${r.calories} kcal but your ${slotLabels[assignSlot]} budget is ${cap} kcal.`);
-      return;
+      const plan = computeSlotRedistribution(profile.nutrition.slotCalories, assignSlot, r.calories);
+      if (!plan) {
+        setMsg(
+          `Cannot fit "${r.name}" (${r.calories} kcal): other meal budgets cannot be reduced below ${MIN_SLOT_BUDGET_KCAL} kcal enough to cover the ${r.calories - cap} kcal overflow. Adjust targets on Plan or pick a smaller recipe.`,
+        );
+        return;
+      }
+      const detail =
+        plan.lines.length > 0
+          ? `\n\nWe will set ${slotLabels[assignSlot]} to ${r.calories} kcal and reduce other slots by ${r.calories - cap} kcal total:\n${plan.lines.join("\n")}`
+          : "";
+      const ok = window.confirm(
+        `"${r.name}" is ${r.calories} kcal; your ${slotLabels[assignSlot]} budget is ${cap} kcal (${r.calories - cap} kcal over).${detail}\n\nApply this assignment and rebalance meal budgets?`,
+      );
+      if (!ok) return;
+      nextNutrition = { ...profile.nutrition, slotCalories: plan.next };
     }
+
     const next = {
       ...profile,
+      nutrition: nextNutrition,
       mealAssignments: {
         ...profile.mealAssignments,
         [assignSlot]: {
@@ -178,11 +238,6 @@ export default function RecipesPage() {
   return (
     <div className="app-shell">
       <h1>Recipes</h1>
-      <p className="muted" style={{ fontSize: "0.88rem" }}>
-        Recipes are stored in Firestore under <code style={{ fontSize: "0.78rem" }}>users/…/recipes</code>. On first
-        open, the bundled <code style={{ fontSize: "0.78rem" }}>recipes.json</code> is written once if your library is
-        empty.
-      </p>
 
       {seeding && <p className="muted">Syncing recipe library to your account…</p>}
 
@@ -197,15 +252,6 @@ export default function RecipesPage() {
             </option>
           ))}
         </select>
-        <label>Filter by slot</label>
-        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)}>
-          <option value="all">All slots</option>
-          {(Object.keys(slotLabels) as MealSlotId[]).map((k) => (
-            <option key={k} value={k}>
-              {slotLabels[k]}
-            </option>
-          ))}
-        </select>
         <label>Filter by category</label>
         <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}>
           {categories.map((c) => (
@@ -214,14 +260,28 @@ export default function RecipesPage() {
             </option>
           ))}
         </select>
-        <label>Filter by tag</label>
-        <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value as typeof tagFilter)}>
-          {TAG_OPTS.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.label}
-            </option>
-          ))}
-        </select>
+        <div className="row" style={{ gap: "0.75rem", flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 8rem" }}>
+            <label>Min kcal</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="Any"
+              value={calMin}
+              onChange={(e) => setCalMin(e.target.value)}
+            />
+          </div>
+          <div style={{ flex: "1 1 8rem" }}>
+            <label>Max kcal</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="Any"
+              value={calMax}
+              onChange={(e) => setCalMax(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
       <div className="recipe-grid">
