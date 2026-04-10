@@ -5,11 +5,11 @@ dist
 *.local
 .DS_Store
 
-# Local / private data — do not commit (photos, OCR, recipes export, etc.)
-data/
+# Local / private data at repo root only (do NOT use plain "data/" — it ignores src/data/)
+/data/
 
 # Generated from local data/recipes.json (see scripts/sync-recipes.mjs)
-public/data/recipes.json
+/public/data/recipes.json
 
 # Tesseract local artifacts
 *.traineddata

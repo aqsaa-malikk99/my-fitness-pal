@@ -4,7 +4,7 @@ Vite + React + TypeScript + Firebase (Auth, Firestore). Track plans, meals, reci
 
 ## Security
 
-- **Never commit** `.env` or the `data/` folder (local photos, OCR output, recipe exports). Both are gitignored.
+- **Never commit** `.env` or the repository-root **`/data/`** folder (local photos, OCR, `recipes.json`). That path is gitignored; **`src/data/`** (TypeScript recipe defaults) is part of the app and is committed.
 - Firebase **client config** is public by design; restrict usage in the [Firebase Console](https://console.firebase.google.com/) (authorized domains, App Check).
 - `npm audit` runs on every Pages deploy (fails on high severity).
 

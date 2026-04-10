@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { DEFAULT_RECIPES } from "@/data/defaultRecipes";
+import { DEFAULT_RECIPES, type RecipeDef } from "@/data/defaultRecipes";
 import { PHOTO_RECIPES } from "@/data/photoRecipes";
 import {
   addUserRecipe,
@@ -45,6 +45,8 @@ type Combined = {
   instructions?: string;
   origin?: "dataset" | "user";
 };
+
+type PhotoRecipe = RecipeDef & { tags?: RecipeTag[]; sourceFile?: string };
 
 const TAG_OPTS: { id: RecipeTag | "all"; label: string }[] = [
   { id: "all", label: "All tags" },
@@ -121,13 +123,13 @@ export default function RecipesPage() {
       instructions: r.instructions,
       origin: r.origin,
     }));
-    const photo = PHOTO_RECIPES.map((r) => ({
+    const photo = PHOTO_RECIPES.map((r: PhotoRecipe) => ({
       ...r,
       isCustom: false as const,
       tags: r.tags?.map(String),
       sourceFile: r.sourceFile,
     }));
-    const base = DEFAULT_RECIPES.map((r) => ({ ...r, isCustom: false as const }));
+    const base = DEFAULT_RECIPES.map((r: RecipeDef) => ({ ...r, isCustom: false as const }));
     const c = custom.map((r) => ({
       id: `custom:${r.id}`,
       name: r.name,
