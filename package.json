@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "ocr:data": "node scripts/ocr-data.mjs",
     "sync:recipes": "node scripts/sync-recipes.mjs",
+    "generate:pwa-icons": "node scripts/generate-pwa-icons.mjs",
     "prebuild": "npm run sync:recipes"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "tesseract.js": "^6.0.0",
     "typescript": "~5.7.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vite-plugin-pwa": "^1.2.0"
   }
 }
