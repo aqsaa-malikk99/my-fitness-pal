@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { registerSW } from "virtual:pwa-register";
 import { AuthProvider } from "@/context/AuthContext";
+import CanonicalHead from "@/components/CanonicalHead";
 import InstallAppBanner from "@/components/InstallAppBanner";
 import App from "./App";
 import "./index.css";
@@ -16,6 +17,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter basename={basename || undefined}>
       <AuthProvider>
+        <CanonicalHead />
         <InstallAppBanner />
         <App />
       </AuthProvider>

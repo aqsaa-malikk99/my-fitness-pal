@@ -26,6 +26,7 @@ export default function InstallAppBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === "1");
   const [iosEligible, setIosEligible] = useState(false);
+  const [copyDone, setCopyDone] = useState(false);
 
   const hasBottomNav = !!(user && profile?.onboardingComplete);
 
@@ -56,6 +57,31 @@ export default function InstallAppBanner() {
     dismiss();
   }, [deferredPrompt, dismiss]);
 
+  const copyFullUrl = useCallback(async () => {
+    const href = window.location.href.split("#")[0];
+    try {
+      await navigator.clipboard.writeText(href);
+      setCopyDone(true);
+      window.setTimeout(() => setCopyDone(false), 2500);
+    } catch {
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = href;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.left = "-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        setCopyDone(true);
+        window.setTimeout(() => setCopyDone(false), 2500);
+      } catch {
+        window.prompt("Copy this full URL:", href);
+      }
+    }
+  }, []);
+
   if (dismissed || isStandalone()) return null;
 
   const posClass = hasBottomNav ? "install-banner--above-nav" : "install-banner--floating";
@@ -80,11 +106,18 @@ export default function InstallAppBanner() {
     return (
       <div className={`install-banner ${posClass}`} role="region" aria-label="Add to Home Screen">
         <p className="install-banner-text">
-          On iPhone or iPad: tap <strong>Share</strong>, then <strong>Add to Home Screen</strong>, to open this like an app.
+          On iPhone or iPad: open this page in <strong>Safari</strong>, tap <strong>Share</strong>, then{" "}
+          <strong>Add to Home Screen</strong>. If Share shows a short or wrong link, copy the full URL below first, then
+          paste it in the Safari address bar before adding.
         </p>
-        <button type="button" className="btn btn-ghost btn-block" onClick={dismiss}>
-          Dismiss
-        </button>
+        <div className="install-banner-actions">
+          <button type="button" className="btn btn-primary btn-block" onClick={() => void copyFullUrl()}>
+            {copyDone ? "Copied!" : "Copy full URL"}
+          </button>
+          <button type="button" className="btn btn-ghost btn-block" onClick={dismiss}>
+            Dismiss
+          </button>
+        </div>
       </div>
     );
   }
