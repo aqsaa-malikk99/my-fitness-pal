@@ -2,11 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import {
   addCalculatorItem,
+  addUserRecipe,
   deleteCalculatorItem,
   listCalculatorDay,
-  todayIso,
 } from "@/firebase/userDoc";
-import type { GoalDirection } from "@/types/profile";
+import type { CalculatorEntry, MealSlotId, UserRecipe, UserRecipeDoc } from "@/types/profile";
+import { MEAL_SLOT_ORDER } from "@/lib/mealSlotOrder";
+import { localDateIso } from "@/lib/dateIso";
+import {
+  FOOD_LOG_SLOT_LABELS,
+  inferFoodLogEntryKind,
+  mealSlotToRecipeCategory,
+  splitIngredients,
+} from "@/lib/foodLog";
+import { assignRecipeToMealPlan } from "@/lib/recipeAssign";
 
 type PortionUnit = "g" | "oz" | "cup" | "tbsp" | "tsp";
 
@@ -22,18 +31,42 @@ function amountToGrams(amount: number, unit: PortionUnit): number {
   return amount * UNIT_TO_G[unit];
 }
 
+type LogTab = "smart" | "manual";
+
+function groupEntries(items: CalculatorEntry[]) {
+  const smart: CalculatorEntry[] = [];
+  const manual: CalculatorEntry[] = [];
+  const meal: CalculatorEntry[] = [];
+  for (const i of items) {
+    const k = inferFoodLogEntryKind(i);
+    if (k === "meal_slot") meal.push(i);
+    else if (k === "smart_portion") smart.push(i);
+    else manual.push(i);
+  }
+  return { smart, manual, meal };
+}
+
+function buildUserRecipe(id: string, doc: Omit<UserRecipeDoc, "createdAt" | "updatedAt">): UserRecipe {
+  const now = new Date().toISOString();
+  return { id, ...doc, createdAt: now, updatedAt: now };
+}
+
 export default function CalculatorPage() {
-  const { user, profile } = useAuth();
-  const [date, setDate] = useState(todayIso);
-  const [items, setItems] = useState<
-    { id: string; label: string; calories: number; date: string; proteinG?: number; carbsG?: number; fatG?: number }[]
-  >([]);
+  const { user, profile, refreshProfile } = useAuth();
+  const [date, setDate] = useState(localDateIso);
+  const [items, setItems] = useState<CalculatorEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<LogTab>("smart");
+  const [msg, setMsg] = useState<string | null>(null);
+
   const [label, setLabel] = useState("");
   const [calories, setCalories] = useState(200);
   const [proteinG, setProteinG] = useState(0);
   const [carbsG, setCarbsG] = useState(0);
   const [fatG, setFatG] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [manualSlot, setManualSlot] = useState<MealSlotId>("breakfast");
+  const [ingredientsText, setIngredientsText] = useState("");
+  const [instructionsText, setInstructionsText] = useState("");
 
   const [pLabel, setPLabel] = useState("Portion");
   const [calPerServing, setCalPerServing] = useState(150);
@@ -44,6 +77,7 @@ export default function CalculatorPage() {
   const [sodiumMg, setSodiumMg] = useState(0);
   const [amt, setAmt] = useState(20);
   const [unit, setUnit] = useState<PortionUnit>("g");
+  const [smartSlot, setSmartSlot] = useState<MealSlotId>("snacks");
 
   const refresh = useCallback(async () => {
     if (!user) return;
@@ -57,26 +91,6 @@ export default function CalculatorPage() {
     void refresh();
   }, [refresh]);
 
-  const total = useMemo(() => items.reduce((s, i) => s + i.calories, 0), [items]);
-  const totalP = useMemo(() => items.reduce((s, i) => s + (i.proteinG ?? 0), 0), [items]);
-  const totalC = useMemo(() => items.reduce((s, i) => s + (i.carbsG ?? 0), 0), [items]);
-  const totalF = useMemo(() => items.reduce((s, i) => s + (i.fatG ?? 0), 0), [items]);
-  const target = profile?.nutrition.dailyCalories ?? 0;
-  const remain = target - total;
-  const goalDir: GoalDirection = profile?.goalDirection ?? "lose";
-  const remainPhrase =
-    goalDir === "gain"
-      ? remain >= 0
-        ? `${remain} kcal to eat`
-        : `${-remain} kcal over`
-      : goalDir === "maintain"
-        ? remain >= 0
-          ? `${remain} kcal under`
-          : `${-remain} kcal over`
-        : remain >= 0
-          ? `${remain} kcal left`
-          : `${-remain} kcal over`;
-
   const gramsTaken = amountToGrams(amt, unit);
   const ratio = serveG > 0 ? gramsTaken / serveG : 0;
   const calcCal = Math.round(calPerServing * ratio);
@@ -85,31 +99,130 @@ export default function CalculatorPage() {
   const calcF = Math.round(fPerServe * ratio * 10) / 10;
   const calcNa = Math.round(sodiumMg * ratio);
 
-  async function add() {
-    if (!user || !label.trim()) return;
-    await addCalculatorItem(user.uid, {
-      date,
-      label: label.trim(),
-      calories,
-      proteinG: proteinG || undefined,
-      carbsG: carbsG || undefined,
-      fatG: fatG || undefined,
+  const dayLabel = useMemo(() => {
+    return new Date(`${date}T12:00:00`).toLocaleDateString(undefined, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
-    setLabel("");
-    await refresh();
+  }, [date]);
+
+  const grouped = useMemo(() => groupEntries(items), [items]);
+
+  function manualDocBase(): Omit<UserRecipeDoc, "createdAt" | "updatedAt"> {
+    const ing = splitIngredients(ingredientsText);
+    return {
+      origin: "user",
+      name: label.trim(),
+      category: mealSlotToRecipeCategory(manualSlot),
+      calories,
+      proteinG: proteinG ?? 0,
+      carbsG: carbsG ?? 0,
+      fatG: fatG ?? 0,
+      ingredients: ing,
+      instructions: instructionsText.trim() || "—",
+      mealTypes: [manualSlot],
+      tags: manualSlot === "bedtimeTea" || manualSlot === "nighttimeTea" ? ["tea"] : undefined,
+    };
   }
 
-  async function addPortion() {
+  /** Save to Recipes + log only (searchable later; no meal plan slot). */
+  async function addManualSaveForFuture() {
+    if (!user || !label.trim()) return;
+    setMsg(null);
+    try {
+      const doc = manualDocBase();
+      const id = await addUserRecipe(user.uid, doc);
+      await addCalculatorItem(user.uid, {
+        date,
+        label: label.trim(),
+        calories,
+        proteinG: proteinG || undefined,
+        carbsG: carbsG || undefined,
+        fatG: fatG || undefined,
+        entryKind: "manual_meal",
+        taggedMealSlot: manualSlot,
+        ingredientsNote: ingredientsText.trim() || undefined,
+        instructionsNote: instructionsText.trim() || undefined,
+        savedRecipeId: id,
+      });
+      setLabel("");
+      setIngredientsText("");
+      setInstructionsText("");
+      await refresh();
+      setMsg("Saved to your log and Recipes — find it under My own when you search.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not save");
+    }
+  }
+
+  /** Save to Recipes, assign to meal plan for this day, and log. */
+  async function addManualToMealPlan() {
+    if (!user || !profile || !label.trim()) return;
+    setMsg(null);
+    try {
+      const doc = manualDocBase();
+      const id = await addUserRecipe(user.uid, doc);
+      const saved = buildUserRecipe(id, doc);
+
+      const assignRes = await assignRecipeToMealPlan({
+        uid: user.uid,
+        profile,
+        recipe: saved,
+        planDate: date,
+        assignSlot: manualSlot,
+      });
+
+      await addCalculatorItem(user.uid, {
+        date,
+        label: label.trim(),
+        calories,
+        proteinG: proteinG || undefined,
+        carbsG: carbsG || undefined,
+        fatG: fatG || undefined,
+        entryKind: "manual_meal",
+        taggedMealSlot: manualSlot,
+        ingredientsNote: ingredientsText.trim() || undefined,
+        instructionsNote: instructionsText.trim() || undefined,
+        savedRecipeId: id,
+      });
+      setLabel("");
+      setIngredientsText("");
+      setInstructionsText("");
+      await refresh();
+      if (assignRes.ok) {
+        await refreshProfile();
+        setMsg("Saved to Recipes, added to your meal plan for this day, and logged.");
+      } else if (assignRes.message === "Cancelled.") {
+        setMsg("Saved to Recipes and your log. Meal plan assignment was cancelled.");
+      } else {
+        await refreshProfile();
+        setMsg(`Saved to Recipes and your log. Meal plan: ${assignRes.message}`);
+      }
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not save");
+    }
+  }
+
+  async function addPortionToLog() {
     if (!user || !pLabel.trim() || serveG <= 0) return;
-    await addCalculatorItem(user.uid, {
-      date,
-      label: `${pLabel.trim()} (${gramsTaken.toFixed(0)} g eq.)`,
-      calories: calcCal,
-      proteinG: calcP || undefined,
-      carbsG: calcC || undefined,
-      fatG: calcF || undefined,
-    });
-    await refresh();
+    setMsg(null);
+    try {
+      await addCalculatorItem(user.uid, {
+        date,
+        label: `${pLabel.trim()} (${gramsTaken.toFixed(0)} g eq.)`,
+        calories: calcCal,
+        proteinG: calcP || undefined,
+        carbsG: calcC || undefined,
+        fatG: calcF || undefined,
+        entryKind: "smart_portion",
+        taggedMealSlot: smartSlot,
+      });
+      await refresh();
+      setMsg("Added to your food log for this day. (Meal page macros only change when you check off meals there.)");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not save");
+    }
   }
 
   async function remove(id: string) {
@@ -118,147 +231,276 @@ export default function CalculatorPage() {
     await refresh();
   }
 
+  function entryCard(i: CalculatorEntry) {
+    const kind = inferFoodLogEntryKind(i);
+    const tag = i.taggedMealSlot ? FOOD_LOG_SLOT_LABELS[i.taggedMealSlot] : null;
+    return (
+      <div
+        key={i.id}
+        className={`food-log-entry-card card row${kind === "smart_portion" ? " food-log-entry-card--smart" : kind === "manual_meal" ? " food-log-entry-card--manual" : " food-log-entry-card--meal"}`}
+        style={{ justifyContent: "space-between", alignItems: "flex-start" }}
+      >
+        <div>
+          <strong>{i.label}</strong>
+          {kind === "meal_slot" && (
+            <span className="food-log-kind-badge food-log-kind-badge--meal" title="From Meal page check-off">
+              {" "}
+              · Meal plan
+            </span>
+          )}
+          {kind === "smart_portion" && (
+            <span className="food-log-kind-badge food-log-kind-badge--smart"> · Smart portion</span>
+          )}
+          {kind === "manual_meal" && (
+            <span className="food-log-kind-badge food-log-kind-badge--manual"> · Manual meal</span>
+          )}
+          {tag && <span className="food-log-slot-pill">{tag}</span>}
+          <div className="food-log-entry-macros">
+            <span className="food-log-kcal">{i.calories} kcal</span>
+            {(i.proteinG != null || i.carbsG != null || i.fatG != null) && (
+              <>
+                <span className="food-log-sep"> · </span>
+                <span className="food-log-protein">P {i.proteinG ?? 0}g</span>
+                <span className="food-log-sep"> </span>
+                <span className="food-log-carbs">C {i.carbsG ?? 0}g</span>
+                <span className="food-log-sep"> </span>
+                <span className="food-log-fat">F {i.fatG ?? 0}g</span>
+              </>
+            )}
+          </div>
+          {i.ingredientsNote && (
+            <p className="food-log-entry-note muted" style={{ margin: "0.35rem 0 0", fontSize: "0.82rem" }}>
+              <strong>Ingredients:</strong> {i.ingredientsNote.slice(0, 200)}
+              {i.ingredientsNote.length > 200 ? "…" : ""}
+            </p>
+          )}
+        </div>
+        <button type="button" className="btn btn-ghost" onClick={() => void remove(i.id)}>
+          Remove
+        </button>
+      </div>
+    );
+  }
+
+  const msgIsError = Boolean(msg && (msg.startsWith("Could not") || msg.includes("Cannot fit")));
+
   return (
     <div className="app-shell">
       <h1 className="app-page-title">Food log</h1>
       <p className="page-lead">
-        Log items by hand or use the portion tool — enter what the label says per serving, then how much you actually
-        had.
+        <strong>Smart portion</strong> only adds a line to this food log (not Recipes, not the Meal plan).{" "}
+        <strong>Manual meal</strong> can save a dish under My own and/or assign it with{" "}
+        <strong>Add to my meal plan</strong>.
       </p>
 
+      {msg && (msgIsError ? <div className="error-banner">{msg}</div> : <div className="success-banner">{msg}</div>)}
+
       <div className="card">
-        <label>Day</label>
-        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-        <p style={{ margin: "0.35rem 0 0", fontSize: "0.9rem" }}>
-          Logged: <strong>{total}</strong> kcal
-          {target > 0 && (
-            <>
-              {" "}
-              · Target {target} kcal ·{" "}
-              <span className={remain < 0 ? "pill bad" : "pill ok"}>{remainPhrase}</span>
-            </>
-          )}
-        </p>
-        <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.8rem" }}>
-          P {Math.round(totalP)}g · C {Math.round(totalC)}g · F {Math.round(totalF)}g (when logged)
-        </p>
-      </div>
+        <div className="row" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: "0.75rem" }}>
+          <div style={{ flex: "1 1 10rem" }}>
+            <label>Day</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            <p className="food-log-day-line muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+              {dayLabel}
+            </p>
+          </div>
+        </div>
 
-      <div className="card stack">
-        <h2 style={{ marginTop: 0 }}>Smart portion</h2>
-        <p className="muted" style={{ marginTop: 0, fontSize: "0.82rem" }}>
-          Enter what the packet says per serving, then the amount you used. Cup/tbsp/tsp use rough gram equivalents for
-          solids; weigh when possible.
-        </p>
-        <label>Food name</label>
-        <input value={pLabel} onChange={(e) => setPLabel(e.target.value)} placeholder="e.g. granola" />
-        <div className="row">
-          <div style={{ flex: 1 }}>
-            <label>kcal / serving</label>
-            <input type="number" min={0} value={calPerServing} onChange={(e) => setCalPerServing(Number(e.target.value))} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label>Serving size (g)</label>
-            <input type="number" min={1} value={serveG} onChange={(e) => setServeG(Number(e.target.value))} />
-          </div>
+        <h2 style={{ marginTop: "1rem", marginBottom: 0 }}>Add to log</h2>
+        <div className="food-log-tabs" role="tablist" aria-label="Log mode" style={{ marginTop: "0.5rem" }}>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "smart"}
+            className={`food-log-tab${tab === "smart" ? " food-log-tab--active" : ""}`}
+            onClick={() => setTab("smart")}
+          >
+            Smart portion
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "manual"}
+            className={`food-log-tab${tab === "manual" ? " food-log-tab--active" : ""}`}
+            onClick={() => setTab("manual")}
+          >
+            Manual meal
+          </button>
         </div>
-        <div className="row">
-          <div style={{ flex: 1 }}>
-            <label>Protein g / serving</label>
-            <input type="number" min={0} value={pPerServe} onChange={(e) => setPPerServe(Number(e.target.value))} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label>Carbs g / serving</label>
-            <input type="number" min={0} value={cPerServe} onChange={(e) => setCPerServe(Number(e.target.value))} />
-          </div>
-        </div>
-        <div className="row">
-          <div style={{ flex: 1 }}>
-            <label>Fat g / serving</label>
-            <input type="number" min={0} value={fPerServe} onChange={(e) => setFPerServe(Number(e.target.value))} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label>Sodium mg / serving</label>
-            <input type="number" min={0} value={sodiumMg} onChange={(e) => setSodiumMg(Number(e.target.value))} />
-          </div>
-        </div>
-        <div className="row">
-          <div style={{ flex: 1 }}>
-            <label>Amount you took</label>
-            <input type="number" min={0} step={0.1} value={amt} onChange={(e) => setAmt(Number(e.target.value))} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label>Unit</label>
-            <select value={unit} onChange={(e) => setUnit(e.target.value as PortionUnit)}>
-              <option value="g">grams</option>
-              <option value="oz">ounces</option>
-              <option value="cup">cup (~240 g)</option>
-              <option value="tbsp">tablespoon (~15 g)</option>
-              <option value="tsp">teaspoon (~5 g)</option>
+
+        {tab === "smart" && (
+          <div className="stack" style={{ marginTop: "0.75rem" }}>
+            <p className="muted" style={{ marginTop: 0, fontSize: "0.82rem" }}>
+              Per-serving values from the pack, then your portion. This only records what you ate here — it does not create a
+              recipe and does not change Meal page macros.
+            </p>
+            <label>Label (short)</label>
+            <input value={pLabel} onChange={(e) => setPLabel(e.target.value)} placeholder="e.g. granola" />
+            <label>Tag (optional, for sorting this log)</label>
+            <select value={smartSlot} onChange={(e) => setSmartSlot(e.target.value as MealSlotId)}>
+              {MEAL_SLOT_ORDER.map((k) => (
+                <option key={k} value={k}>
+                  {FOOD_LOG_SLOT_LABELS[k]}
+                </option>
+              ))}
             </select>
+            <div className="row">
+              <div style={{ flex: 1 }}>
+                <label>kcal / serving</label>
+                <input type="number" min={0} value={calPerServing} onChange={(e) => setCalPerServing(Number(e.target.value))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Serving size (g)</label>
+                <input type="number" min={1} value={serveG} onChange={(e) => setServeG(Number(e.target.value))} />
+              </div>
+            </div>
+            <div className="row">
+              <div style={{ flex: 1 }}>
+                <label>Protein g / serving</label>
+                <input type="number" min={0} value={pPerServe} onChange={(e) => setPPerServe(Number(e.target.value))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Carbs g / serving</label>
+                <input type="number" min={0} value={cPerServe} onChange={(e) => setCPerServe(Number(e.target.value))} />
+              </div>
+            </div>
+            <div className="row">
+              <div style={{ flex: 1 }}>
+                <label>Fat g / serving</label>
+                <input type="number" min={0} value={fPerServe} onChange={(e) => setFPerServe(Number(e.target.value))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Sodium mg / serving</label>
+                <input type="number" min={0} value={sodiumMg} onChange={(e) => setSodiumMg(Number(e.target.value))} />
+              </div>
+            </div>
+            <div className="row">
+              <div style={{ flex: 1 }}>
+                <label>Amount you took</label>
+                <input type="number" min={0} step={0.1} value={amt} onChange={(e) => setAmt(Number(e.target.value))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Unit</label>
+                <select value={unit} onChange={(e) => setUnit(e.target.value as PortionUnit)}>
+                  <option value="g">grams</option>
+                  <option value="oz">ounces</option>
+                  <option value="cup">cup (~240 g)</option>
+                  <option value="tbsp">tablespoon (~15 g)</option>
+                  <option value="tsp">teaspoon (~5 g)</option>
+                </select>
+              </div>
+            </div>
+            <div className="food-log-result card" style={{ background: "var(--bg)", marginBottom: 0 }}>
+              <strong>Result</strong>
+              <p className="food-log-result-line" style={{ margin: "0.5rem 0 0", fontSize: "0.9rem", lineHeight: 1.55 }}>
+                <span className="muted">~{gramsTaken.toFixed(1)} g equivalent → </span>
+                <span className="food-log-kcal food-log-kcal--lg">{calcCal} kcal</span>
+                <span className="muted"> · </span>
+                <span className="food-log-protein">Protein {calcP}g</span>
+                <span className="muted"> · </span>
+                <span className="food-log-carbs">Carbs {calcC}g</span>
+                <span className="muted"> · </span>
+                <span className="food-log-fat">Fat {calcF}g</span>
+                {sodiumMg > 0 && (
+                  <>
+                    <span className="muted"> · </span>
+                    <span>Na ~{calcNa} mg</span>
+                  </>
+                )}
+              </p>
+            </div>
+            <button type="button" className="btn btn-primary btn-block" onClick={() => void addPortionToLog()}>
+              Add portion to log
+            </button>
           </div>
-        </div>
-        <div className="card" style={{ background: "var(--bg)", marginBottom: 0 }}>
-          <strong>Result</strong>
-          <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.88rem" }}>
-            ~{gramsTaken.toFixed(1)} g equivalent · <strong>{calcCal}</strong> kcal · P {calcP}g · C {calcC}g · F {calcF}g
-            {sodiumMg > 0 && <> · Na ~{calcNa} mg</>}
-          </p>
-        </div>
-        <button type="button" className="btn btn-primary btn-block" onClick={() => void addPortion()}>
-          Add portion to log
-        </button>
-      </div>
+        )}
 
-      <div className="card stack">
-        <h2 style={{ marginTop: 0 }}>Quick add</h2>
-        <label>Food</label>
-        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. latte, apple" />
-        <label>Calories</label>
-        <input type="number" min={1} value={calories} onChange={(e) => setCalories(Number(e.target.value))} />
-        <div className="row">
-          <div style={{ flex: 1 }}>
-            <label>Protein g</label>
-            <input type="number" min={0} value={proteinG} onChange={(e) => setProteinG(Number(e.target.value))} />
+        {tab === "manual" && (
+          <div className="stack" style={{ marginTop: "0.75rem" }}>
+            <p className="muted" style={{ marginTop: 0, fontSize: "0.82rem" }}>
+              Enter the meal name, tag, macros, and optional ingredients and recipe notes. Then either add it to
+              today’s <strong>meal plan</strong> (and Recipes), or only save for <strong>future</strong> search on the Recipes
+              tab under My own.
+            </p>
+            <label>Meal name</label>
+            <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="e.g. chicken rice bowl" />
+            <label>Tag (breakfast, lunch, snack, tea, …)</label>
+            <select value={manualSlot} onChange={(e) => setManualSlot(e.target.value as MealSlotId)}>
+              {MEAL_SLOT_ORDER.map((k) => (
+                <option key={k} value={k}>
+                  {FOOD_LOG_SLOT_LABELS[k]}
+                </option>
+              ))}
+            </select>
+            <label>Calories</label>
+            <input type="number" min={1} value={calories} onChange={(e) => setCalories(Number(e.target.value))} />
+            <div className="row">
+              <div style={{ flex: 1 }}>
+                <label>Protein g</label>
+                <input type="number" min={0} value={proteinG} onChange={(e) => setProteinG(Number(e.target.value))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Carbs g</label>
+                <input type="number" min={0} value={carbsG} onChange={(e) => setCarbsG(Number(e.target.value))} />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label>Fat g</label>
+                <input type="number" min={0} value={fatG} onChange={(e) => setFatG(Number(e.target.value))} />
+              </div>
+            </div>
+            <label>Ingredients (optional, one per line)</label>
+            <textarea
+              value={ingredientsText}
+              onChange={(e) => setIngredientsText(e.target.value)}
+              rows={3}
+              placeholder="e.g. 150 g cooked rice&#10;120 g grilled chicken"
+            />
+            <label>Recipe / notes (optional)</label>
+            <textarea
+              value={instructionsText}
+              onChange={(e) => setInstructionsText(e.target.value)}
+              rows={3}
+              placeholder="Short steps or notes"
+            />
+            <button type="button" className="btn btn-primary btn-block" onClick={() => void addManualToMealPlan()}>
+              Add to my meal plan
+            </button>
+            <button type="button" className="btn btn-secondary btn-block" onClick={() => void addManualSaveForFuture()}>
+              Save meal for future (Recipes + log)
+            </button>
           </div>
-          <div style={{ flex: 1 }}>
-            <label>Carbs g</label>
-            <input type="number" min={0} value={carbsG} onChange={(e) => setCarbsG(Number(e.target.value))} />
-          </div>
-          <div style={{ flex: 1 }}>
-            <label>Fat g</label>
-            <input type="number" min={0} value={fatG} onChange={(e) => setFatG(Number(e.target.value))} />
-          </div>
-        </div>
-        <button type="button" className="btn btn-secondary btn-block" onClick={() => void add()}>
-          Add entry
-        </button>
+        )}
       </div>
 
       {loading ? (
         <p className="muted">Loading…</p>
       ) : (
-        <div className="stack">
-          {items.map((i) => (
-            <div key={i.id} className="card row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-              <div>
-                <strong>{i.label}</strong>
-                <div className="muted">
-                  {i.calories} kcal
-                  {(i.proteinG ?? i.carbsG ?? i.fatG) != null && (
-                    <>
-                      {" "}
-                      · P {i.proteinG ?? 0} C {i.carbsG ?? 0} F {i.fatG ?? 0}
-                    </>
-                  )}
-                </div>
-              </div>
-              <button type="button" className="btn btn-ghost" onClick={() => void remove(i.id)}>
-                Remove
-              </button>
-            </div>
-          ))}
-          {items.length === 0 && <p className="muted">No entries for this day.</p>}
+        <div className="stack food-log-history">
+          <h2 className="food-log-history-title">Entries for this day</h2>
+          {items.length === 0 ? (
+            <p className="muted">No entries for this day.</p>
+          ) : (
+            <>
+              {grouped.meal.length > 0 && (
+                <section className="food-log-section">
+                  <h3 className="food-log-section__title">From your meal plan</h3>
+                  <div className="stack">{grouped.meal.map(entryCard)}</div>
+                </section>
+              )}
+              {grouped.smart.length > 0 && (
+                <section className="food-log-section">
+                  <h3 className="food-log-section__title">Smart portions</h3>
+                  <div className="stack">{grouped.smart.map(entryCard)}</div>
+                </section>
+              )}
+              {grouped.manual.length > 0 && (
+                <section className="food-log-section">
+                  <h3 className="food-log-section__title">Manual meals</h3>
+                  <div className="stack">{grouped.manual.map(entryCard)}</div>
+                </section>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
