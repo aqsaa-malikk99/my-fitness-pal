@@ -1,0 +1,10 @@
+{
+  "name": "Fitness Pal",
+  "short_name": "FitnessPal",
+  "description": "Goals, meals, gym plan, and progress",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": []
+}

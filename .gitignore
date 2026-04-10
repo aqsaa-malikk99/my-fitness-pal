@@ -1,0 +1,16 @@
+node_modules
+dist
+.env
+.env.local
+*.local
+.DS_Store
+
+# Local / private data — do not commit (photos, OCR, recipes export, etc.)
+data/
+
+# Generated from local data/recipes.json (see scripts/sync-recipes.mjs)
+public/data/recipes.json
+
+# Tesseract local artifacts
+*.traineddata
+eng.traineddata

@@ -1,0 +1,29 @@
+{
+  "name": "myfitness-gal",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run sync:recipes && vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "ocr:data": "node scripts/ocr-data.mjs",
+    "sync:recipes": "node scripts/sync-recipes.mjs",
+    "prebuild": "npm run sync:recipes"
+  },
+  "dependencies": {
+    "firebase": "^11.6.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router-dom": "^7.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tesseract.js": "^6.0.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.2.0"
+  }
+}
