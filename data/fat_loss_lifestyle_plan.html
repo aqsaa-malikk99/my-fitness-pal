@@ -1,0 +1,673 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); }
+
+.plan-wrap { padding: 1rem 0; }
+
+.tab-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.tab-btn {
+  padding: 7px 14px; border-radius: var(--border-radius-md);
+  border: 0.5px solid var(--color-border-secondary);
+  background: var(--color-background-secondary);
+  color: var(--color-text-secondary); font-size: 13px; cursor: pointer;
+  transition: all .15s;
+}
+.tab-btn.active {
+  background: var(--color-background-primary);
+  color: var(--color-text-primary); font-weight: 500;
+  border-color: var(--color-border-primary);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.section-title { font-size: 18px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 4px; }
+.section-sub { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 1.25rem; line-height: 1.6; }
+
+.card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 12px; }
+.card-title { font-size: 14px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
+.card-body { font-size: 13px; color: var(--color-text-secondary); line-height: 1.7; }
+
+.metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 10px; margin-bottom: 1.25rem; }
+.metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px; }
+.metric-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 500; color: var(--color-text-primary); }
+.metric-unit { font-size: 12px; color: var(--color-text-secondary); }
+
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; font-weight: 500; }
+.badge-green { background: var(--color-background-success); color: var(--color-text-success); }
+.badge-amber { background: var(--color-background-warning); color: var(--color-text-warning); }
+.badge-blue { background: var(--color-background-info); color: var(--color-text-info); }
+.badge-pink { background: #FBEAF0; color: #993556; }
+
+.day-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 6px; margin-bottom: 1.25rem; }
+.day-card { border-radius: var(--border-radius-md); border: 0.5px solid var(--color-border-tertiary); padding: 8px 6px; text-align: center; background: var(--color-background-primary); }
+.day-name { font-size: 11px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 4px; }
+.day-focus { font-size: 11px; color: var(--color-text-primary); line-height: 1.4; margin-bottom: 4px; }
+.day-steps { font-size: 10px; color: var(--color-text-secondary); }
+.day-card.uni { border-color: #B5D4F4; background: #E6F1FB22; }
+.day-card.rest { border-color: var(--color-border-tertiary); background: var(--color-background-secondary); }
+.day-card.cycle { border-color: #F4C0D1; background: #FBEAF022; }
+
+.meal-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+.meal-row:last-child { border-bottom: none; }
+.meal-time { font-size: 11px; color: var(--color-text-secondary); min-width: 58px; padding-top: 2px; }
+.meal-info { flex: 1; }
+.meal-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 2px; }
+.meal-detail { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+.meal-cals { font-size: 12px; font-weight: 500; color: var(--color-text-info); text-align: right; white-space: nowrap; padding-top: 2px; }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 500px) { .two-col { grid-template-columns: 1fr; } .day-grid { grid-template-columns: repeat(4,1fr); } }
+
+.progress-bar-wrap { background: var(--color-background-secondary); border-radius: 6px; height: 8px; overflow: hidden; margin: 6px 0; }
+.progress-bar { height: 100%; border-radius: 6px; }
+
+.tip-list { list-style: none; }
+.tip-list li { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; padding: 4px 0 4px 18px; position: relative; }
+.tip-list li::before { content: '→'; position: absolute; left: 0; color: var(--color-text-tertiary); }
+
+.grocery-section { margin-bottom: 1rem; }
+.grocery-section h4 { font-size: 13px; font-weight: 500; color: var(--color-text-primary); margin-bottom: 6px; }
+.grocery-tag { display: inline-block; font-size: 12px; padding: 3px 9px; border-radius: 20px; border: 0.5px solid var(--color-border-tertiary); margin: 3px; color: var(--color-text-secondary); background: var(--color-background-secondary); }
+
+.phase-row { display: flex; gap: 10px; align-items: flex-start; margin-bottom: 10px; }
+.phase-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+.phase-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+.phase-text strong { color: var(--color-text-primary); font-weight: 500; }
+
+.divider { height: 0.5px; background: var(--color-border-tertiary); margin: 1rem 0; }
+
+.toggle-row { display: flex; justify-content: space-between; align-items: center; cursor: pointer; padding: 8px 0; }
+.toggle-icon { color: var(--color-text-secondary); font-size: 14px; transition: transform .2s; }
+.toggle-icon.open { transform: rotate(90deg); }
+.collapsible-body { display: none; padding-bottom: 8px; }
+.collapsible-body.open { display: block; }
+</style>
+
+<div class="plan-wrap">
+
+<div style="margin-bottom:1.5rem;">
+  <div style="font-size:22px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px;">Your Fat Loss & Lifestyle Plan</div>
+  <div style="font-size:13px;color:var(--color-text-secondary);">Personalised for you & your husband — desi-friendly, budget-conscious, sustainable</div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('overview')">Overview</button>
+  <button class="tab-btn" onclick="showTab('schedule')">Weekly Schedule</button>
+  <button class="tab-btn" onclick="showTab('meals')">Meal Plan</button>
+  <button class="tab-btn" onclick="showTab('mealprep')">Meal Prep</button>
+  <button class="tab-btn" onclick="showTab('fitness')">Fitness</button>
+  <button class="tab-btn" onclick="showTab('cycle')">Cycle Guide</button>
+  <button class="tab-btn" onclick="showTab('grocery')">Grocery List</button>
+</div>
+
+<!-- OVERVIEW TAB -->
+<div id="tab-overview" class="tab-content active">
+  <div class="section-title">Your Numbers</div>
+  <div class="section-sub">Safe fat loss: 0.5–0.75 kg per week. At 0.6 kg/week avg you can realistically lose 14–15 kg by June 15. Reaching 20 kg by then would require extreme deficits — not safe. Target 15 kg loss by June 15 with excellent consistency, then continue sustainably. Your hair and skin will be protected at this pace.</div>
+
+  <div class="metric-grid">
+    <div class="metric"><div class="metric-label">Your daily calories</div><div class="metric-value">1,450<span class="metric-unit"> kcal</span></div></div>
+    <div class="metric"><div class="metric-label">Husband's calories</div><div class="metric-value">2,200<span class="metric-unit"> kcal</span></div></div>
+    <div class="metric"><div class="metric-label">Weekly loss target</div><div class="metric-value">0.6<span class="metric-unit"> kg</span></div></div>
+    <div class="metric"><div class="metric-label">Realistic by June 15</div><div class="metric-value">14–15<span class="metric-unit"> kg</span></div></div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">Your macros (daily)</div>
+      <div style="margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-text-secondary);margin-bottom:2px;"><span>Protein</span><span style="color:var(--color-text-primary);font-weight:500;">110–120g</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:55%;background:#1D9E75;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-text-secondary);margin:6px 0 2px;"><span>Carbs</span><span style="color:var(--color-text-primary);font-weight:500;">140–160g</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:38%;background:#3B8BD4;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-text-secondary);margin:6px 0 2px;"><span>Fats</span><span style="color:var(--color-text-primary);font-weight:500;">45–55g</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:22%;background:#BA7517;"></div></div>
+      </div>
+      <div class="card-body" style="margin-top:8px;">Protein is your top priority — keeps muscle, controls hunger, protects hair & skin.</div>
+    </div>
+    <div class="card">
+      <div class="card-title">Husband's macros (daily)</div>
+      <div style="margin-top:8px;">
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-text-secondary);margin-bottom:2px;"><span>Protein</span><span style="color:var(--color-text-primary);font-weight:500;">150–170g</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:55%;background:#1D9E75;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-text-secondary);margin:6px 0 2px;"><span>Carbs</span><span style="color:var(--color-text-primary);font-weight:500;">250–280g</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:58%;background:#3B8BD4;"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--color-text-secondary);margin:6px 0 2px;"><span>Fats</span><span style="color:var(--color-text-primary);font-weight:500;">65–75g</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" style="width:32%;background:#BA7517;"></div></div>
+      </div>
+      <div class="card-body" style="margin-top:8px;">Slight surplus on training days to build lean muscle without gaining fat.</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Simple portion guide (no scales needed)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Protein (chicken/daal):</strong> your palm = 1 serving (~25g protein). Have 1 palm per meal.</li>
+        <li><strong style="color:var(--color-text-primary);">Roti:</strong> you = 1 medium roti per meal. Husband = 2 rotis.</li>
+        <li><strong style="color:var(--color-text-primary);">Rice:</strong> you = 1 small bowl (cooked, ~120g). Husband = 1.5–2 bowls.</li>
+        <li><strong style="color:var(--color-text-primary);">Vegetables/sabzi:</strong> no limit — fill half your plate freely.</li>
+        <li><strong style="color:var(--color-text-primary);">Oil/ghee:</strong> 1 tsp max per meal for cooking (a big lever for fat loss).</li>
+        <li><strong style="color:var(--color-text-primary);">Tea/coffee:</strong> semi-skimmed milk kept as is — limit to 2 cups/day, use 1 sweetener tablet instead of sugar.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">3 fat-loss rules that actually work</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Protein first, every meal.</strong> It keeps you full, protects muscle, and requires more calories to digest.</li>
+        <li><strong style="color:var(--color-text-primary);">Steps are your secret weapon.</strong> 8,000–10,000 steps/day = 300–400 extra kcal burned without cardio guilt.</li>
+        <li><strong style="color:var(--color-text-primary);">Consistency beats perfection.</strong> One off-day doesn't ruin progress — getting back on track the next meal does.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- WEEKLY SCHEDULE TAB -->
+<div id="tab-schedule" class="tab-content">
+  <div class="section-title">Weekly Schedule</div>
+  <div class="section-sub">Mon & Wed are uni days — shorter, lower-effort. Gym 12 PM–4 PM window. Steps replace long cardio.</div>
+
+  <div class="day-grid">
+    <div class="day-card uni">
+      <div class="day-name">MON</div>
+      <div class="day-focus">Upper body (light)<br><span class="badge badge-blue" style="font-size:10px;">Uni day</span></div>
+      <div class="day-steps">6,000 steps</div>
+    </div>
+    <div class="day-card">
+      <div class="day-name">TUE</div>
+      <div class="day-focus">Lower body<br>(squats/lunges)</div>
+      <div class="day-steps">8,000 steps</div>
+    </div>
+    <div class="day-card uni">
+      <div class="day-name">WED</div>
+      <div class="day-focus">Active rest<br><span class="badge badge-blue" style="font-size:10px;">Uni day</span></div>
+      <div class="day-steps">6,000 steps</div>
+    </div>
+    <div class="day-card">
+      <div class="day-name">THU</div>
+      <div class="day-focus">Full body<br>strength</div>
+      <div class="day-steps">10,000 steps</div>
+    </div>
+    <div class="day-card">
+      <div class="day-name">FRI</div>
+      <div class="day-focus">Upper body<br>+ arms</div>
+      <div class="day-steps">8,000 steps</div>
+    </div>
+    <div class="day-card">
+      <div class="day-name">SAT</div>
+      <div class="day-focus">Lower body<br>+ glutes</div>
+      <div class="day-steps">10,000 steps</div>
+    </div>
+    <div class="day-card rest">
+      <div class="day-name">SUN</div>
+      <div class="day-focus">Full rest / light walk</div>
+      <div class="day-steps">5,000 steps</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Monday — Upper body light (uni day, 35–40 min)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Warm-up: 5 min treadmill or stairs (low pace)</li>
+        <li>Seated dumbbell shoulder press — 3×10</li>
+        <li>Cable/machine chest press — 3×12</li>
+        <li>Lat pulldown — 3×12</li>
+        <li>Bicep curls — 2×12</li>
+        <li>10 min stairs cool-down</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tuesday — Lower body (45–50 min)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Warm-up: 5 min treadmill</li>
+        <li>Goblet squat — 4×12</li>
+        <li>Leg press — 3×15</li>
+        <li>Romanian deadlift — 3×12</li>
+        <li>Seated leg curl — 3×15</li>
+        <li>Calf raises — 3×20</li>
+        <li>10 min treadmill incline walk</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Wednesday — Active rest (uni day, no gym)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Walk to/from uni — counts toward 6,000 steps</li>
+        <li>15 min home bodyweight stretching (optional)</li>
+        <li>No guilt — recovery is part of fat loss</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Thursday — Full body strength (50 min)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Warm-up: 5 min bike/treadmill</li>
+        <li>Barbell/dumbbell squat — 3×12</li>
+        <li>Dumbbell chest press — 3×12</li>
+        <li>Cable row — 3×12</li>
+        <li>Hip thrust (glutes) — 4×15</li>
+        <li>Plank — 3×30 sec</li>
+        <li>10 min stair climber</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Friday — Upper body + arms (45 min)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Warm-up: 5 min</li>
+        <li>Incline dumbbell press — 3×12</li>
+        <li>Seated cable row — 3×12</li>
+        <li>Lateral raises — 3×15</li>
+        <li>Tricep pushdown — 3×12</li>
+        <li>Hammer curls — 3×12</li>
+        <li>10 min treadmill cool-down</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Saturday — Lower body + glutes (50 min)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Warm-up: 5 min</li>
+        <li>Sumo squat — 4×15</li>
+        <li>Hip thrust (heavier) — 4×12</li>
+        <li>Leg extension — 3×15</li>
+        <li>Walking lunges — 3×12 each leg</li>
+        <li>10 min stair climber</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cardio strategy — the truth</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Your 10–15 min cardio at end of sessions is enough — it depletes glycogen and burns fat</li>
+        <li>8,000–10,000 steps/day burns an extra 300–400 kcal — more effective than forcing 30 min treadmill</li>
+        <li>Stair climber > flat treadmill for fat burning in short time</li>
+        <li>Incline walking (10–12% incline, 4–5 km/h) is your best friend — burns as much as running with zero joint stress</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Progressive overload (every 2 weeks)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Weeks 1–2: learn form, moderate weight, finish all reps comfortably</li>
+        <li>Weeks 3–4: add 1–2 kg per exercise or 1 extra rep per set</li>
+        <li>Weeks 5–6: add another rep or another set</li>
+        <li>Every 6 weeks: take 1 deload week (lighter weights, same movements)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- MEALS TAB -->
+<div id="tab-meals" class="tab-content">
+  <div class="section-title">5 Core Meals (Rotate These)</div>
+  <div class="section-sub">Shared meals — just adjust portions. Cook once, eat 2–3 times. All desi-friendly.</div>
+
+  <div class="card">
+    <div class="card-title">Meal 1 — Masala chicken + 1 roti + salad</div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="badge badge-green">Lunch or dinner</span>
+        <span class="badge badge-amber">Batch cookable</span>
+      </div>
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Your plate:</strong> 120g chicken (1 palm), 1 medium roti, unlimited salad/cucumber/tomato</li>
+        <li><strong style="color:var(--color-text-primary);">Husband's plate:</strong> 180g chicken, 2 rotis, salad</li>
+        <li><strong style="color:var(--color-text-primary);">Your calories:</strong> ~430 kcal | Husband: ~650 kcal</li>
+        <li>Cook: marinate chicken thighs in yoghurt + cumin + garlic + chilli. Pan-fry or grill in 1 tsp oil. Batch 6–8 pieces, lasts 4 days fridge.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Meal 2 — Masoor/chana daal + 1 roti</div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="badge badge-green">Lunch or dinner</span>
+        <span class="badge badge-amber">Batch cookable</span>
+      </div>
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Your plate:</strong> 1 cup daal (cooked), 1 roti, small salad</li>
+        <li><strong style="color:var(--color-text-primary);">Husband's plate:</strong> 1.5 cup daal, 2 rotis</li>
+        <li><strong style="color:var(--color-text-primary);">Your calories:</strong> ~380 kcal | Husband: ~570 kcal</li>
+        <li>Cook: boil daal, tarka with 1 tsp oil + cumin + garlic + tomato. Make big pot, freezes perfectly for 1 month.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Meal 3 — Chicken + rice bowl</div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="badge badge-green">Lunch</span>
+        <span class="badge badge-amber">Batch cookable</span>
+      </div>
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Your plate:</strong> 100g chicken, 1 small bowl rice (~120g cooked), raita or plain yoghurt</li>
+        <li><strong style="color:var(--color-text-primary);">Husband's plate:</strong> 150g chicken, 200g rice, raita</li>
+        <li><strong style="color:var(--color-text-primary);">Your calories:</strong> ~440 kcal | Husband: ~620 kcal</li>
+        <li>Rice tip: cook in bulk Sunday — stores 4 days fridge. Use pre-cooked batch from meal prep day.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Meal 4 — Egg bhurji (scrambled eggs) + 1 roti</div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="badge badge-green">Breakfast or dinner</span>
+      </div>
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Your plate:</strong> 2 eggs scrambled with onion + tomato + chilli, 1 roti</li>
+        <li><strong style="color:var(--color-text-primary);">Husband's plate:</strong> 3 eggs, 2 rotis</li>
+        <li><strong style="color:var(--color-text-primary);">Your calories:</strong> ~340 kcal | Husband: ~520 kcal</li>
+        <li>Quick to make fresh (10 min). Use 1 tsp oil only. Adds variety without batch cooking.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Meal 5 — Sabzi (mixed veg) + daal + roti</div>
+    <div class="card-body">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span class="badge badge-green">Dinner</span>
+        <span class="badge badge-amber">Batch cookable</span>
+      </div>
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Your plate:</strong> 1 cup sabzi (spinach/aloo/peas), ½ cup daal, 1 roti</li>
+        <li><strong style="color:var(--color-text-primary);">Husband's plate:</strong> 1.5 cup sabzi, 1 cup daal, 2 rotis</li>
+        <li><strong style="color:var(--color-text-primary);">Your calories:</strong> ~360 kcal | Husband: ~530 kcal</li>
+        <li>Budget tip: cheapest and most filling meal. Rotate vegetables weekly.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="section-title" style="font-size:16px;margin-bottom:8px;">Daily meal timing</div>
+
+  <div class="card">
+    <div class="meal-row">
+      <div class="meal-time">7:30–8am</div>
+      <div class="meal-info">
+        <div class="meal-name">Breakfast</div>
+        <div class="meal-detail">2 eggs (any style) + 1 roti OR egg bhurji + 1 cup low-fat yoghurt. Tea/coffee with semi-skimmed milk + 1 sweetener.</div>
+      </div>
+      <div class="meal-cals">~320 kcal</div>
+    </div>
+    <div class="meal-row">
+      <div class="meal-time">11am</div>
+      <div class="meal-info">
+        <div class="meal-name">Mid-morning snack</div>
+        <div class="meal-detail">1 banana OR apple OR 1 small handful of almonds (10–12 nuts max). Second tea here if needed.</div>
+      </div>
+      <div class="meal-cals">~120 kcal</div>
+    </div>
+    <div class="meal-row">
+      <div class="meal-time">1–2pm</div>
+      <div class="meal-info">
+        <div class="meal-name">Lunch (pre or post gym)</div>
+        <div class="meal-detail">Meal 1, 2, or 3 from rotation. Eat before gym or within 1 hour after — both work.</div>
+      </div>
+      <div class="meal-cals">~400–440 kcal</div>
+    </div>
+    <div class="meal-row">
+      <div class="meal-time">4–5pm</div>
+      <div class="meal-info">
+        <div class="meal-name">Post-gym snack</div>
+        <div class="meal-detail">150g low-fat yoghurt (plain) OR 1 boiled egg + small fruit. Helps muscle recovery without blowing calories.</div>
+      </div>
+      <div class="meal-cals">~120 kcal</div>
+    </div>
+    <div class="meal-row">
+      <div class="meal-time">7–8pm</div>
+      <div class="meal-info">
+        <div class="meal-name">Dinner</div>
+        <div class="meal-detail">Meal from rotation. Lighter than lunch — reduce roti by half on non-gym days if not hungry.</div>
+      </div>
+      <div class="meal-cals">~360–400 kcal</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tea & coffee — sorted smartly</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Max 2 cups/day. Semi-skimmed milk is fine — ~30 kcal per cup, no issue.</li>
+        <li>Replace sugar with 1 sweetener tablet (Stevia or Canderel — both widely available Lidl/Tesco).</li>
+        <li>Schedule teas: morning with breakfast, one mid-morning or after gym. Don't sip continuously — spikes appetite.</li>
+        <li>If you want a 3rd cup: make it black or just milk + sweetener, no biscuits.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- MEAL PREP TAB -->
+<div id="tab-mealprep" class="tab-content">
+  <div class="section-title">Batch Cook System</div>
+  <div class="section-sub">Cook Sunday + Wednesday. Eat 3–4 days from each batch. Mix and match to avoid boredom.</div>
+
+  <div class="card">
+    <div class="card-title">Sunday cook (2 hours, covers Mon–Thu)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Chicken:</strong> marinate and cook 800g–1kg chicken thighs in one pan. Store fridge in airtight container, lasts 4 days.</li>
+        <li><strong style="color:var(--color-text-primary);">Daal:</strong> boil large pot of masoor or chana daal. Make tarka. Divide: half in fridge, half frozen in portions.</li>
+        <li><strong style="color:var(--color-text-primary);">Rice:</strong> cook large batch plain rice. Fridge 4 days. Reheat with splash of water in microwave.</li>
+        <li><strong style="color:var(--color-text-primary);">Roti:</strong> make a batch of 10–12, wrap in foil, fridge 3 days or freeze. Reheat in dry pan 1 min per side.</li>
+        <li><strong style="color:var(--color-text-primary);">Veg:</strong> chop onion, tomato, cucumber ahead — store in fridge boxes for quick salads.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Wednesday top-up (30 min, covers Thu–Sat)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Fresh chicken batch or pull from freezer</li>
+        <li>Cook 1 sabzi (spinach/peas/aloo — 20 min)</li>
+        <li>Defrost daal portions from Sunday's batch</li>
+        <li>Make fresh roti or use frozen batch</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Fridge & freezer plan</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Fridge (4 days):</strong> cooked chicken, cooked rice, fresh daal portion, chopped salad veg, yoghurt, eggs</li>
+        <li><strong style="color:var(--color-text-primary);">Freezer (1 month):</strong> daal in zip bags (portion sized), frozen roti stack, raw marinated chicken portions, cooked chicken pieces</li>
+        <li><strong style="color:var(--color-text-primary);">Containers needed:</strong> 4–5 medium airtight containers (Lidl or Tesco £5–8 set). Label with day cooked.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Weekly mix & match (avoid boredom)</div>
+    <div class="card-body">
+      <div style="font-size:13px;color:var(--color-text-secondary);line-height:1.8;">
+        <strong style="color:var(--color-text-primary);">Mon:</strong> Egg bhurji + roti (breakfast) → Chicken + rice (lunch) → Daal + roti (dinner)<br>
+        <strong style="color:var(--color-text-primary);">Tue:</strong> Eggs + roti → Chicken + roti + salad → Sabzi + daal + roti<br>
+        <strong style="color:var(--color-text-primary);">Wed:</strong> Yoghurt + 1 roti → Daal + roti → Chicken + rice (easy uni day)<br>
+        <strong style="color:var(--color-text-primary);">Thu:</strong> Eggs → Chicken + rice → Sabzi + roti<br>
+        <strong style="color:var(--color-text-primary);">Fri:</strong> Egg bhurji → Chicken + roti → Daal + roti<br>
+        <strong style="color:var(--color-text-primary);">Sat:</strong> Yoghurt + fruit → Chicken + rice → Sabzi + daal + roti<br>
+        <strong style="color:var(--color-text-primary);">Sun:</strong> Eggs → Leftovers + roti → Rest / light meal
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FITNESS TAB -->
+<div id="tab-fitness" class="tab-content">
+  <div class="section-title">Gym Plan Details</div>
+  <div class="section-sub">Beginner-intermediate level. Strength-focused with short cardio. Your husband does the same workout — he just lifts heavier and skips the calorie deficit.</div>
+
+  <div class="card">
+    <div class="card-title">Husband's approach (same gym, same days)</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Same exercises — increase weight by 20–30% above yours</li>
+        <li>Add 1–2 extra sets per exercise for muscle building</li>
+        <li>Finish cardio with 15 min moderate treadmill (not incline — flat jogging)</li>
+        <li>Post-workout: eat within 30–45 min (his snack = more carbs than yours)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Step targets — your real cardio</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Gym days:</strong> 8,000–10,000 steps (gym session already counts ~3,000)</li>
+        <li><strong style="color:var(--color-text-primary);">Uni days:</strong> 6,000 steps (campus walking counts)</li>
+        <li><strong style="color:var(--color-text-primary);">Rest day:</strong> 5,000 steps minimum (20 min casual walk)</li>
+        <li>Use free step counter on your phone (Health app iPhone / Google Fit Android)</li>
+        <li>Park slightly further, take stairs at uni — adds 1,000 steps effortlessly</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cravings & low energy management</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li><strong style="color:var(--color-text-primary);">Feeling angry or irritable:</strong> usually means blood sugar dipped — eat your snack, don't skip it. 1 banana or a few nuts solves this fast.</li>
+        <li><strong style="color:var(--color-text-primary);">Sweet craving after dinner:</strong> 1 date + black tea OR 1 tsp honey in warm water. Satisfies without derailing progress.</li>
+        <li><strong style="color:var(--color-text-primary);">Feeling very hungry at night:</strong> drink 1 glass water first, wait 10 min. If still hungry, eat 100g low-fat yoghurt — won't undo your day.</li>
+        <li><strong style="color:var(--color-text-primary);">Low energy before gym:</strong> eat your snack 45 min before going. A banana or small roti + egg works well.</li>
+        <li><strong style="color:var(--color-text-primary);">Weekend cravings:</strong> allow 1 small treat Sunday (1 biscuit, 1 piece of mithai) — planned indulgence prevents bingeing.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- CYCLE GUIDE TAB -->
+<div id="tab-cycle" class="tab-content">
+  <div class="section-title">Menstrual Cycle Adjustments</div>
+  <div class="section-sub">Your cycle falls roughly 16th–20th each month. Adjust workouts and food accordingly — don't fight your body.</div>
+
+  <div class="phase-row">
+    <div class="phase-dot" style="background:#639922;"></div>
+    <div class="phase-text"><strong>Days 1–15 (follicular + ovulation):</strong> Energy is higher, insulin sensitivity better. Push harder in gym — increase weights, higher intensity. Carbs absorb better here so eat normally or slightly more on gym days.</div>
+  </div>
+  <div class="phase-row">
+    <div class="phase-dot" style="background:#F4C0D1;"></div>
+    <div class="phase-text"><strong>Days 16–20 (your period window):</strong> Reduce gym intensity — do lighter weights, more reps. No heavy compound lifts if you have cramps. Swap gym sessions for 30 min incline walking or yoga. Cravings are hormonal — allow 1 extra piece of fruit or 1 small sweet. Don't crash diet during this window — it increases hair loss risk.</div>
+  </div>
+  <div class="phase-row">
+    <div class="phase-dot" style="background:#B5D4F4;"></div>
+    <div class="phase-text"><strong>Days 21–28 (luteal):</strong> Energy dips slightly, hunger increases. Prioritise protein and fibre to stay full. Don't add extra carbs — keep meals as normal. Good week to focus on steps and moderate workouts rather than PRs.</div>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <div class="card-title">During period (Days 16–20) — gym swap plan</div>
+    <div class="card-body">
+      <ul class="tip-list">
+        <li>Replace heavy gym session with 30–40 min incline walk or stair climber at low intensity</li>
+        <li>Stretching or light yoga at home is valid exercise — don't skip movement entirely</li>
+        <li>Iron loss during period: eat lentils (daal), spinach, eggs — keep this in your rotation</li>
+        <li>Bloating is water retention, not fat gain — don't panic about scale during this week</li>
+        <li>Weigh yourself only once a week, on Wednesday morning after the bathroom, same conditions</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- GROCERY TAB -->
+<div id="tab-grocery" class="tab-content">
+  <div class="section-title">Monthly Grocery List (~£170–185)</div>
+  <div class="section-sub">Under your £200 budget with room for household essentials. Shop weekly not monthly for fresh items.</div>
+
+  <div class="two-col">
+    <div>
+      <div class="grocery-section">
+        <h4>Lidl (weekly, ~£25–30)</h4>
+        <span class="grocery-tag">Chicken thighs (1.5kg)</span>
+        <span class="grocery-tag">Eggs (12 pack)</span>
+        <span class="grocery-tag">Semi-skimmed milk</span>
+        <span class="grocery-tag">Low-fat yoghurt (plain)</span>
+        <span class="grocery-tag">Bananas</span>
+        <span class="grocery-tag">Apples</span>
+        <span class="grocery-tag">Cucumber</span>
+        <span class="grocery-tag">Tomatoes</span>
+        <span class="grocery-tag">Onions (bag)</span>
+        <span class="grocery-tag">Spinach</span>
+        <span class="grocery-tag">Frozen peas</span>
+        <span class="grocery-tag">Almonds (small bag)</span>
+        <span class="grocery-tag">Sweetener tablets</span>
+      </div>
+      <div class="grocery-section">
+        <h4>Tesco (bi-weekly, ~£15–20)</h4>
+        <span class="grocery-tag">Basmati rice (2kg)</span>
+        <span class="grocery-tag">Whole wheat flour (atta)</span>
+        <span class="grocery-tag">Cooking oil (small bottle)</span>
+        <span class="grocery-tag">Garlic (bulb)</span>
+        <span class="grocery-tag">Frozen veg mix</span>
+        <span class="grocery-tag">Canned tomatoes</span>
+        <span class="grocery-tag">Green chillies</span>
+      </div>
+    </div>
+    <div>
+      <div class="grocery-section">
+        <h4>Pakistani store / halal butcher (bi-weekly, ~£20–25)</h4>
+        <span class="grocery-tag">Masoor daal (red lentils)</span>
+        <span class="grocery-tag">Chana daal</span>
+        <span class="grocery-tag">Whole wheat atta (large)</span>
+        <span class="grocery-tag">Halal chicken (bulk)</span>
+        <span class="grocery-tag">Cumin seeds</span>
+        <span class="grocery-tag">Coriander powder</span>
+        <span class="grocery-tag">Chilli powder</span>
+        <span class="grocery-tag">Turmeric</span>
+        <span class="grocery-tag">Garam masala</span>
+        <span class="grocery-tag">Yoghurt (large tub)</span>
+        <span class="grocery-tag">Dates (small pack)</span>
+        <span class="grocery-tag">Aloo (potatoes)</span>
+      </div>
+      <div class="card" style="margin-top:10px;">
+        <div class="card-title">Cost-saving tips</div>
+        <div class="card-body">
+          <ul class="tip-list">
+            <li>Buy chicken in bulk from halal butcher — freeze in portions</li>
+            <li>Daal is cheapest protein — use 3×/week</li>
+            <li>Lidl plain yoghurt is identical to branded at half price</li>
+            <li>Frozen veg is as nutritious as fresh — use freely</li>
+            <li>Eggs from Lidl — best value protein in the UK</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>

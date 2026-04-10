@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#E8F0EA" />
+  <title>MyFitnessPal Lite – Personal Dashboard</title>
+  <style>
+    :root {
+      --bg: #F4F7F5;
+      --surface: #FFFFFF;
+      --surface-2: #EEF5F0;
+      --text: #1E2D24;
+      --muted: #5C7268;
+      --accent: #2D6A4F;
+      --accent-soft: #D8EDE3;
+      --warning: #BC6C25;
+      --border: #D5E0D8;
+      --shadow: 0 4px 20px rgba(30, 45, 36, 0.08);
+      --radius: 14px;
+      --radius-sm: 10px;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+      --safe-bottom: env(safe-area-inset-bottom, 0);
+      --tab-h: 56px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; scroll-behavior: smooth; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      min-height: 100dvh;
+      padding-bottom: calc(var(--tab-h) + var(--safe-bottom) + 12px);
+    }
+    .app-header {
+      background: linear-gradient(135deg, var(--accent-soft), var(--bg));
+      padding: 1rem 1rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .app-header h1 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .app-header p {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    main {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    .panel { display: none; animation: fadeIn 0.2s ease; }
+    .panel.active { display: block; }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      padding: 1rem 1.1rem;
+      margin-bottom: 0.85rem;
+    }
+    .card h2, .card h3 {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text);
+    }
+    .card-sub {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+      line-height: 1.55;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-right: 4px;
+      margin-bottom: 4px;
+    }
+    .badge-uni { background: #D4E4F7; color: #1D4E89; }
+    .badge-cycle { background: #F5D5DE; color: #8B2942; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.65rem;
+    }
+    @media (max-width: 520px) { .grid-2 { grid-template-columns: 1fr; } }
+    .stat {
+      background: var(--surface-2);
+      border-radius: var(--radius-sm);
+      padding: 0.75rem;
+      text-align: center;
+    }
+    .stat .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .stat .value { font-size: 1.35rem; font-weight: 700; color: var(--accent); }
+    .stat .unit { font-size: 0.75rem; color: var(--muted); font-weight: 500; }
+    .macro-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.8rem;
+      margin: 6px 0;
+    }
+    .bar {
+      height: 6px;
+      border-radius: 4px;
+      background: var(--border);
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .bar > i { display: block; height: 100%; border-radius: 4px; }
+    .progress-p { background: #2D6A4F; }
+    .progress-c { background: #457B9D; }
+    .progress-f { background: #BC6C25; }
+    ul.tips { list-style: none; font-size: 0.82rem; color: var(--muted); }
+    ul.tips li {
+      padding: 6px 0 6px 1.1rem;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    ul.tips li:last-child { border-bottom: none; }
+    ul.tips li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .day-strip {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 6px;
+      font-size: 0.65rem;
+      margin-bottom: 0.75rem;
+    }
+    @media (max-width: 520px) {
+      .day-strip { grid-template-columns: repeat(4, 1fr); }
+    }
+    .day-cell {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 4px;
+      text-align: center;
+    }
+    .day-cell.uni { border-color: #7BA7D9; background: #EEF6FC; }
+    .day-cell.cycle { border-color: #E5989B; background: #FDF2F3; }
+    .day-cell.rest { background: var(--surface-2); }
+    .day-cell strong { display: block; font-size: 0.7rem; margin-bottom: 4px; }
+    .meal-timing .row {
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      gap: 8px;
+      align-items: start;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.8rem;
+    }
+    .meal-timing .row:last-child { border-bottom: none; }
+    .meal-timing .time { color: var(--muted); font-size: 0.72rem; }
+    .meal-timing .cals { color: var(--accent); font-weight: 600; white-space: nowrap; font-size: 0.78rem; }
+    .meal-pill {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+    .recipe-toolbar { margin-bottom: 0.75rem; }
+    .recipe-toolbar label { font-size: 0.72rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    .recipe-search { margin-bottom: 10px; }
+    .recipe-filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .recipe-filters button {
+      width: auto;
+      padding: 8px 12px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--muted);
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .recipe-filters button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .recipe-meta-bar {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .recipe-section-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 1.1rem 0 0.5rem;
+      padding-bottom: 4px;
+      border-bottom: 2px solid var(--accent-soft);
+    }
+    .recipe-section-title:first-child { margin-top: 0; }
+    .recipe-list { list-style: none; }
+    .recipe-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0.85rem 1rem;
+      margin-bottom: 10px;
+      box-shadow: 0 1px 8px rgba(30, 45, 36, 0.04);
+    }
+    .recipe-item h3 { font-size: 0.9rem; font-weight: 600; margin: 4px 0 6px; line-height: 1.3; }
+    .recipe-item .tag-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .meal-tag {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--muted);
+    }
+    .meal-tag.breakfast { background: #FFF4E0; color: #8B5A00; }
+    .meal-tag.lunch { background: #E6F1FB; color: #1D4E89; }
+    .meal-tag.dinner { background: #EDE7F6; color: #4A2C7A; }
+    .meal-tag.snack { background: #E8F5E9; color: #1B5E20; }
+    .meal-tag.drink { background: #E0F2F1; color: #00695C; }
+    .match-badge {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--accent);
+      background: var(--accent-soft);
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .recipe-kcal {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .recipe-ing { margin: 8px 0 0; padding-left: 1rem; font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+    .recipe-ing li { margin-bottom: 4px; }
+    .recipe-note { font-size: 0.74rem; color: var(--warning); margin-top: 8px; line-height: 1.45; }
+    .recipe-source { display: inline-block; margin-top: 8px; font-size: 0.72rem; }
+    .recipe-source a { color: var(--accent); word-break: break-all; }
+    .recipe-from-data { font-size: 0.68rem; color: var(--muted); margin-top: 6px; font-style: italic; }
+    .recipe-empty { text-align: center; padding: 2rem; color: var(--muted); font-size: 0.85rem; }
+    form.calc label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 8px 0 4px;
+    }
+    input, select, textarea, button {
+      font: inherit;
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--surface);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .calc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    @media (max-width: 520px) { .calc-row { grid-template-columns: 1fr; } }
+    .calc-out {
+      background: var(--accent-soft);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      margin-top: 12px;
+      font-size: 0.85rem;
+    }
+    .calc-out div { display: flex; justify-content: space-between; margin: 4px 0; }
+    .btn {
+      cursor: pointer;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      font-weight: 600;
+      padding: 12px;
+      border-radius: var(--radius-sm);
+      margin-top: 8px;
+    }
+    .btn.secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+    table.data {
+      width: 100%;
+      font-size: 0.78rem;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+    table.data th, table.data td {
+      border: 1px solid var(--border);
+      padding: 8px 6px;
+      text-align: left;
+    }
+    table.data th { background: var(--surface-2); }
+    .tab-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: calc(var(--tab-h) + var(--safe-bottom));
+      padding-bottom: var(--safe-bottom);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
+      padding-top: 6px;
+      z-index: 100;
+      box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+    }
+    .tab-bar button {
+      flex: 1;
+      border: 0;
+      background: none;
+      padding: 6px 2px;
+      font-size: 0.6rem;
+      color: var(--muted);
+      font-weight: 600;
+      max-width: 72px;
+    }
+    .tab-bar button.active { color: var(--accent); }
+    .tab-bar .ico { font-size: 1.1rem; line-height: 1.2; display: block; margin-bottom: 2px; }
+    .notes-scroll { max-height: 65vh; overflow-y: auto; }
+    .firestore-box {
+      background: #1E2D24;
+      color: #C8D5CE;
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      font-size: 0.72rem;
+      font-family: ui-monospace, monospace;
+      overflow-x: auto;
+      margin-top: 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .section-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin: 1rem 0 0.5rem;
+    }
+    .hint { font-size: 0.72rem; color: var(--muted); margin-top: 6px; }
+    .prep-grid { font-size: 0.8rem; color: var(--muted); }
+    .prep-grid strong { color: var(--text); }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <h1>MyFitnessPal Lite</h1>
+    <p>Personal dashboard · Pakistani meals · Safe fat loss to June 15</p>
+  </header>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section class="panel active" id="panel-dashboard" aria-label="Dashboard">
+      <div class="card">
+        <h2>Profiles</h2>
+        <div class="grid-2" style="margin-top:8px">
+          <div class="stat" style="text-align:left">
+            <div class="label">You</div>
+            <p class="card-sub" style="margin:6px 0 0;font-size:0.78rem">Female · ~80 kg start · safe fat loss (hair/hormone friendly) · gym <strong>12–4 PM</strong> · Mon/Wed uni lighter · cycle adjust <strong>16–20</strong></p>
+          </div>
+          <div class="stat" style="text-align:left">
+            <div class="label">Husband</div>
+            <p class="card-sub" style="margin:6px 0 0;font-size:0.78rem">Male · 5′7″ · ~68 kg · maintain / lean muscle · same meals, bigger portions · likes cheese, fries — <strong>planned add-ons</strong></p>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Realistic expectations</h2>
+        <p class="card-sub">Safe pace: about <strong>0.5–0.75 kg/week</strong>. By <strong>June 15</strong>, aim for roughly <strong>14–15 kg</strong> total loss with strong consistency — not extreme deficits (better for hormones & hair).</p>
+        <div class="grid-2">
+          <div class="stat"><div class="label">You</div><div class="value">~1,450</div><div class="unit">kcal / day</div></div>
+          <div class="stat"><div class="label">Husband</div><div class="value">~2,200</div><div class="unit">kcal / day</div></div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Calorie deficit</h3>
+          <p class="card-sub" style="margin-bottom:0">A modest deficit plus high protein & steps trims fat while protecting muscle and energy. Crash dieting raises hair loss & cycle risk.</p>
+        </div>
+        <div class="card">
+          <h3>Mistakes to avoid</h3>
+          <ul class="tips">
+            <li>Skipping protein or whole meals</li>
+            <li>All cardio, no strength</li>
+            <li>Ignoring sleep & stress</li>
+            <li>Weighing daily during period week</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Quick wins</h3>
+        <ul class="tips">
+          <li><strong>Protein first</strong> every meal — palm-sized chicken/daal targets.</li>
+          <li><strong>Steps 8–10k</strong> on gym days beat long cardio for you.</li>
+          <li><strong>Tea/coffee</strong>: semi-skimmed milk OK — max 2 cups; sweetener vs sugar.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Data folder note</h3>
+        <p class="card-sub" style="margin-bottom:0">Built from your <code style="font-size:0.75rem">data/fat_loss_lifestyle_plan.html</code> sketches. The <strong>Recipes</strong> tab also pulls ideas from your <code>data/</code> meal photos (e.g. chicken steak macros, cinnamon–green tea drink, dinner list). Ramadan-style sheets: <strong>Sehri</strong> = normal breakfast; <strong>Iftari</strong> fried spreads optional — stay hydrated.</p>
+      </div>
+    </section>
+
+    <!-- PLAN -->
+    <section class="panel" id="panel-plan" aria-label="Weekly plan">
+      <p class="card-sub">Gym window <strong>12–4 PM</strong>. Cardio caps <strong>10–15 min</strong> after weights. <span class="badge badge-uni">Uni</span> Mon/Wed lighter. <span class="badge badge-cycle">Days 16–20</span> = easier sessions.</p>
+      <div class="day-strip" id="dayStrip"></div>
+      <div class="card">
+        <h2>Week at a glance</h2>
+        <ul class="tips" id="planDetails"></ul>
+      </div>
+      <div class="card">
+        <h3>Progression (every ~2 weeks)</h3>
+        <ul class="tips">
+          <li>Wks 1–2: form, moderate load</li>
+          <li>Wks 3–4: +1–2 kg or +1 rep / set</li>
+          <li>Wks 5–6: +set or small weight bump</li>
+          <li>Every 6 wks: 1 deload week (lighter, same moves)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Cycle days 16–20</h3>
+        <p class="card-sub">Drop heavy compounds if cramping. Prefer incline walk, light machines, yoga. Keep protein & iron foods (daal, spinach, eggs). Scale weight fluctuation = mostly water.</p>
+      </div>
+    </section>
+
+    <!-- MEALS -->
+    <section class="panel" id="panel-meals" aria-label="Meals">
+      <div class="grid-2">
+        <div class="card">
+          <h2>You (fat loss)</h2>
+          <div class="macro-row"><span>Protein</span><strong>110–120 g</strong></div>
+          <div class="bar"><i class="progress-p" style="width:58%"></i></div>
+          <div class="macro-row"><span>Carbs</span><strong>140–160 g</strong></div>
+          <div class="bar"><i class="progress-c" style="width:45%"></i></div>
+          <div class="macro-row"><span>Fats</span><strong>45–55 g</strong></div>
+          <div class="bar"><i class="progress-f" style="width:28%"></i></div>
+        </div>
+        <div class="card">
+          <h2>Husband (maintain / lean gain)</h2>
+          <div class="macro-row"><span>Protein</span><strong>150–170 g</strong></div>
+          <div class="bar"><i class="progress-p" style="width:62%"></i></div>
+          <div class="macro-row"><span>Carbs</span><strong>250–280 g</strong></div>
+          <div class="bar"><i class="progress-c" style="width:55%"></i></div>
+          <div class="macro-row"><span>Fats</span><strong>65–75 g</strong></div>
+          <div class="bar"><i class="progress-f" style="width:35%"></i></div>
+          <p class="card-sub" style="margin-top:8px;margin-bottom:0">Same meals — he gets extra roti, rice, cheese, sauces where noted.</p>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Meal timing · calories · protein</h2>
+        <p class="card-sub">Approximate daily total ~1,450 kcal (you). Adjust slightly if hungry on gym days (+100 kcal from carbs).</p>
+        <div class="meal-timing">
+          <div class="row">
+            <div class="time">7:30–8</div>
+            <div>
+              <strong>Breakfast</strong>
+              <div class="meal-pill">2 eggs + 1 roti or bhurji + low-fat yoghurt. Tea: semi-skimmed milk + sweetener.</div>
+              <div class="meal-pill"><strong>~320 kcal</strong> · <strong>~28 g protein</strong></div>
+            </div>
+            <div class="cals">320</div>
+          </div>
+          <div class="row">
+            <div class="time">~11:00</div>
+            <div>
+              <strong>Snack</strong>
+              <div class="meal-pill">Fruit or 10–12 almonds. Second tea if needed.</div>
+              <div class="meal-pill"><strong>~120 kcal</strong> · <strong>~3–8 g protein</strong></div>
+            </div>
+            <div class="cals">120</div>
+          </div>
+          <div class="row">
+            <div class="time">1–2 PM</div>
+            <div>
+              <strong>Lunch</strong> <span class="badge">Pre/post gym</span>
+              <div class="meal-pill">Rotating desi plate (chicken/daal/rice). Within 1 hr of training OK.</div>
+              <div class="meal-pill"><strong>~400–440 kcal</strong> · <strong>~35–40  g protein</strong></div>
+            </div>
+            <div class="cals">420</div>
+          </div>
+          <div class="row">
+            <div class="time">4–5 PM</div>
+            <div>
+              <strong>Post-gym</strong>
+              <div class="meal-pill">150 g yoghurt or 1 egg + small fruit.</div>
+              <div class="meal-pill"><strong>~120 kcal</strong> · <strong>~15 g protein</strong></div>
+            </div>
+            <div class="cals">120</div>
+          </div>
+          <div class="row">
+            <div class="time">7–8 PM</div>
+            <div>
+              <strong>Dinner</strong>
+              <div class="meal-pill">Lighter plate; half roti if rest day & not hungry.</div>
+              <div class="meal-pill"><strong>~360–400 kcal</strong> · <strong>~30–35 g protein</strong></div>
+            </div>
+            <div class="cals">380</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Meal prep · batch cook</h2>
+        <p class="card-sub">Budget mindset ~£200/mo shop smart (Lidl + desi store). Sunday big cook + Wednesday top-up.</p>
+        <div class="prep-grid">
+          <p><strong>Sunday (~2 h)</strong></p>
+          <ul class="tips">
+            <li><strong>Chicken:</strong> 800 g–1 kg thighs, yoghurt masala — fridge 4 days</li>
+            <li><strong>Daal:</strong> big pot masoor/chana — freeze half in portions</li>
+            <li><strong>Rice:</strong> plain batch — fridge up to 4 days</li>
+            <li><strong>Roti:</strong> 10–12 pieces, foil; freeze extra</li>
+            <li><strong>Salad veg:</strong> chop onion/tomato/cucumber boxes</li>
+          </ul>
+          <p style="margin-top:10px"><strong>Wednesday (~30 min)</strong></p>
+          <ul class="tips">
+            <li>Fresh chicken or freezer pull · one sabzi · defrost daal · roti top-up</li>
+          </ul>
+          <p style="margin-top:10px"><strong>Husband “boost”</strong></p>
+          <ul class="tips">
+            <li>Extra roti/rice · cheese on chicken · raita + olive oil · occasional fries as planned side (track roughly)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECIPES -->
+    <section class="panel" id="panel-recipes" aria-label="Recipes">
+      <div class="card recipe-toolbar">
+        <h2>Recipe library (100)</h2>
+        <p class="card-sub" style="margin-bottom:10px">Grouped by meal type · Mix of Pakistani staples, oats, and items from your <code style="font-size:0.75rem">data/</code> dietitian photos. Deploy <strong>this HTML + recipes-data.js</strong> together on GitHub Pages.</p>
+        <label for="recipeIngredientSearch">Find by ingredients (comma-separated)</label>
+        <input type="text" class="recipe-search" id="recipeIngredientSearch" placeholder="e.g. chicken, tomato, oats, cinnamon" autocomplete="off" />
+        <div class="recipe-filters" id="recipeCategoryFilters" role="tablist" aria-label="Recipe category">
+          <button type="button" class="active" data-cat="all">All</button>
+          <button type="button" data-cat="breakfast">Breakfast</button>
+          <button type="button" data-cat="lunch">Lunch</button>
+          <button type="button" data-cat="dinner">Dinner</button>
+          <button type="button" data-cat="snack">Snacks</button>
+          <button type="button" data-cat="drink">Anti-inflammatory drinks</button>
+        </div>
+        <p class="recipe-meta-bar" id="recipeResultsMeta">Loading recipes…</p>
+        <div id="recipeListMount" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- CALCULATOR -->
+    <section class="panel" id="panel-calculator" aria-label="Calculator">
+      <div class="card">
+        <h2>Smart portion calculator</h2>
+        <p class="card-sub">Enter label “per serving” facts and serving weight. Then type grams <em>or</em> volume. Volume uses grams-per-unit below (tweak for thick sauces / nut butters).</p>
+        <form class="calc" id="calcForm" onsubmit="return false;">
+          <div class="calc-row">
+            <div>
+              <label>Calories / serving</label>
+              <input type="number" id="cCal" value="150" min="0" step="1" />
+            </div>
+            <div>
+              <label>Protein (g)</label>
+              <input type="number" id="cProt" value="10" min="0" step="0.1" />
+            </div>
+          </div>
+          <div class="calc-row">
+            <div>
+              <label>Carbs (g)</label>
+              <input type="number" id="cCarb" value="12" min="0" step="0.1" />
+            </div>
+            <div>
+              <label>Fat (g)</label>
+              <input type="number" id="cFat" value="8" min="0" step="0.1" />
+            </div>
+          </div>
+          <div class="calc-row">
+            <div>
+              <label>Sodium (mg)</label>
+              <input type="number" id="cNa" value="180" min="0" step="1" />
+            </div>
+            <div>
+              <label>Serving size (grams)</label>
+              <input type="number" id="cServe" value="28" min="0.1" step="0.1" />
+            </div>
+          </div>
+          <div class="calc-row">
+            <div>
+              <label>Amount</label>
+              <input type="number" id="cAmt" value="28" min="0" step="0.1" />
+            </div>
+            <div>
+              <label>Unit</label>
+              <select id="cUnit">
+                <option value="g" selected>Grams (direct)</option>
+                <option value="tsp">Teaspoon</option>
+                <option value="tbsp">Tablespoon</option>
+                <option value="cup">Cup (US)</option>
+              </select>
+            </div>
+          </div>
+          <div class="calc-row">
+            <div>
+              <label>g per 1 tsp</label>
+              <input type="number" id="gTsp" value="5" min="0.1" step="0.1" />
+            </div>
+            <div>
+              <label>g per 1 tbsp</label>
+              <input type="number" id="gTbsp" value="15" min="0.1" step="0.1" />
+            </div>
+          </div>
+          <div>
+            <label>g per 1 cup</label>
+            <input type="number" id="gCup" value="240" min="1" step="1" />
+            <p class="hint">Defaults assume water-like density; increase for nut butter, honey, etc.</p>
+          </div>
+        </form>
+        <div class="calc-out" id="calcOut" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <!-- PROGRESS -->
+    <section class="panel" id="panel-progress" aria-label="Progress">
+      <div class="card">
+        <h2>Body measurements</h2>
+        <p class="card-sub">Saved on this device only (localStorage). Same fields many dietitian plans use: weight, waist, hips, arms.</p>
+        <form id="measForm">
+          <div class="calc-row">
+            <div><label>Date</label><input type="date" id="mDate" required /></div>
+            <div><label>Weight (kg)</label><input type="number" id="mWt" step="0.1" min="0" /></div>
+          </div>
+          <div class="calc-row">
+            <div><label>Waist (cm)</label><input type="number" id="mWaist" step="0.1" min="0" /></div>
+            <div><label>Hips (cm)</label><input type="number" id="mHips" step="0.1" min="0" /></div>
+          </div>
+          <div class="calc-row">
+            <div><label>Arms (cm)</label><input type="number" id="mArms" step="0.1" min="0" /></div>
+            <div><label>&nbsp;</label><button type="submit" class="btn">Save entry</button></div>
+          </div>
+        </form>
+        <div style="overflow-x:auto">
+          <table class="data" id="measTable">
+            <thead><tr><th>Date</th><th> kg </th><th> Waist </th><th> Hips </th><th> Arms </th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <button type="button" class="btn secondary" id="clearMeas" style="margin-top:8px">Clear all measurements</button>
+      </div>
+      <div class="card">
+        <h2>Daily step targets</h2>
+        <div class="grid-2" style="margin-bottom:8px">
+          <div class="stat"><div class="label">Gym days</div><div class="value">8–10k</div></div>
+          <div class="stat"><div class="label">Uni (Mon/Wed)</div><div class="value">6k</div></div>
+          <div class="stat"><div class="label">Rest (Sun)</div><div class="value">5k+</div></div>
+          <div class="stat"><div class="label">Cardio cap</div><div class="value" style="font-size:1rem">10–15 min</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Step tracker</h2>
+        <p class="card-sub">Log steps manually — phone Health / Google Fit for actual counts.</p>
+        <div class="calc-row">
+          <div><label>Date</label><input type="date" id="sDate" /></div>
+          <div><label>Steps</label><input type="number" id="sSteps" min="0" step="1" placeholder="e.g. 8542" /></div>
+        </div>
+        <button type="button" class="btn" id="saveSteps">Save steps</button>
+        <p class="hint" id="stepGoalHint"></p>
+        <div style="overflow-x:auto;margin-top:8px">
+          <table class="data" id="stepsTable">
+            <thead><tr><th>Date</th><th>Steps</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Firestore-ready (commented)</h3>
+        <p class="card-sub">Uncomment & add your keys when you wire cloud sync.</p>
+        <div class="firestore-box" id="fbSnippet"></div>
+      </div>
+    </section>
+
+    <!-- NOTES -->
+    <section class="panel" id="panel-notes" aria-label="Notes">
+      <div class="notes-scroll">
+        <div class="card">
+          <h2>Fat loss rules</h2>
+          <ul class="tips">
+            <li>Protein + fiber every meal; veggies unlimited.</li>
+            <li>Oil/ghee cap ~1 tsp per meal when cooking.</li>
+            <li>One planned treat beats “all or nothing” binge cycles.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Consistency</h2>
+          <ul class="tips">
+            <li>Batch cook Sundays — decisions are pre-made.</li>
+            <li>Weigh weekly, same morning routine — not daily in luteal/period.</li>
+            <li>Missed gym → still hit steps & protein.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Cravings</h2>
+          <ul class="tips">
+            <li>Angry/hangry → eat scheduled snack (fruit/nuts).</li>
+            <li>Sweet after dinner → 1 date + tea or honey in warm water.</li>
+            <li>Night hunger → water wait 10 min, then yoghurt if still hungry.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Energy & uni days</h2>
+          <ul class="tips">
+            <li>Snack 45 min pre-gym (banana or egg + small roti).</li>
+            <li>Mon/Wed: shorter sessions — consistency &gt; intensity.</li>
+            <li>Sleep 7+ hours whenever possible — hunger hormones calm down.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tab-bar" aria-label="Main navigation">
+    <button type="button" data-tab="dashboard" class="active"><span class="ico">⌂</span>Dash</button>
+    <button type="button" data-tab="plan"><span class="ico">▦</span>Plan</button>
+    <button type="button" data-tab="meals"><span class="ico">☰</span>Meals</button>
+    <button type="button" data-tab="recipes"><span class="ico">◈</span>Recipes</button>
+    <button type="button" data-tab="calculator"><span class="ico">%</span>Calc</button>
+    <button type="button" data-tab="progress"><span class="ico">↗</span>Progress</button>
+    <button type="button" data-tab="notes"><span class="ico">✎</span>Notes</button>
+  </nav>
+
+  <script src="recipes-data.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    var STORAGE_MEAS = 'mfp_lite_measurements_v1';
+    var STORAGE_STEPS = 'mfp_lite_steps_v1';
+
+    /* ---------- Tabs ---------- */
+    document.querySelectorAll('.tab-bar button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var id = btn.getAttribute('data-tab');
+        document.querySelectorAll('.tab-bar button').forEach(function (b) { b.classList.remove('active'); });
+        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+        btn.classList.add('active');
+        var panel = document.getElementById('panel-' + id);
+        if (panel) panel.classList.add('active');
+      });
+    });
+
+    /* ---------- Weekly plan data (+ period hint) ---------- */
+    var days = [
+      { w: 'Mon', label: 'Upper (light)', steps: '6,000', uni: true, cycle: false, detail: 'Uni day · 35–40 min: warm-up 5 min → DB shoulder press 3×10 → chest press 3×12 → lat pulldown 3×12 → curls 2×12 → 10 min stairs.' },
+      { w: 'Tue', label: 'Lower body', steps: '8,000', uni: false, cycle: false, detail: '45–50 min: goblet squat 4×12 → leg press 3×15 → RDL 3×12 → leg curl 3×15 → calves 3×20 → 10 min incline walk.' },
+      { w: 'Wed', label: 'Active rest', steps: '6,000', uni: true, cycle: false, detail: 'Uni · walk campus · optional 15 min stretch. No gym guilt.' },
+      { w: 'Thu', label: 'Full body', steps: '10,000', uni: false, cycle: false, detail: '50 min: squat 3×12 → DB chest press 3×12 → cable row 3×12 → hip thrust 4×15 → plank 3×30s → 10 min stairs.' },
+      { w: 'Fri', label: 'Upper + arms', steps: '8,000', uni: false, cycle: false, detail: '45 min: incline DB press 3×12 → seated row 3×12 → lateral raise 3×15 → pushdown 3×12 → hammer curl 3×12 → 10 min walk.' },
+      { w: 'Sat', label: 'Lower + glutes', steps: '10,000', uni: false, cycle: false, detail: '50 min: sumo squat 4×15 → hip thrust heavy 4×12 → leg ext 3×15 → walking lunges 3×12/leg → 10 min stairs.' },
+      { w: 'Sun', label: 'Rest / walk', steps: '5,000', uni: false, cycle: false, detail: 'Full rest or easy walk. Meal prep day.' }
+    ];
+
+    var strip = document.getElementById('dayStrip');
+    var planUl = document.getElementById('planDetails');
+    if (strip && planUl) {
+      days.forEach(function (d, i) {
+        var cell = document.createElement('div');
+        cell.className = 'day-cell' + (d.uni ? ' uni' : '') + (d.cycle ? ' cycle' : '') + (d.label.indexOf('Rest') !== -1 ? ' rest' : '');
+        cell.innerHTML = '<strong>' + d.w + '</strong>' + d.label + '<br><span style="opacity:.85">' + d.steps + ' steps</span>';
+        strip.appendChild(cell);
+        var li = document.createElement('li');
+        li.innerHTML = '<strong>' + d.w + ':</strong> ' + d.detail;
+        planUl.appendChild(li);
+      });
+      var liCycle = document.createElement('li');
+      liCycle.innerHTML = '<strong>Days 16–20 (cycle):</strong> swap heavy day for 30–40 min incline walk, machines light, or yoga. Keep protein & iron-rich meals.';
+      planUl.appendChild(liCycle);
+    }
+
+    /* ---------- Recipes (100) · list + ingredient search · recipes-data.js ---------- */
+    var RECIPE_ORDER = ['breakfast', 'lunch', 'dinner', 'snack', 'drink'];
+    var RECIPE_SECTION_LABEL = {
+      breakfast: 'Breakfast',
+      lunch: 'Lunch',
+      dinner: 'Dinner',
+      snack: 'Snacks',
+      drink: 'Anti-inflammatory & hydrating drinks'
+    };
+    var recipeCatalog = typeof window.MFP_RECIPES !== 'undefined' && Array.isArray(window.MFP_RECIPES) ? window.MFP_RECIPES : [];
+    var activeRecipeCat = 'all';
+    var recipeSearchEl = document.getElementById('recipeIngredientSearch');
+    var recipeMount = document.getElementById('recipeListMount');
+    var recipeMeta = document.getElementById('recipeResultsMeta');
+
+    function normalizeIngredientTokens(raw) {
+      if (!raw || !String(raw).trim()) return [];
+      return String(raw).split(',').map(function (t) {
+        return t.trim().toLowerCase();
+      }).filter(function (t) { return t.length >= 2; });
+    }
+
+    function scoreRecipe(recipe, tokens) {
+      if (!tokens.length) return 0;
+      var score = 0;
+      var title = (recipe.title || '').toLowerCase();
+      var ings = recipe.ingredients || [];
+      tokens.forEach(function (tok) {
+        if (title.indexOf(tok) !== -1) score++;
+        ings.forEach(function (line) {
+          if (String(line).toLowerCase().indexOf(tok) !== -1) score++;
+        });
+      });
+      return score;
+    }
+
+    function renderRecipeItem(rec) {
+      var cat = rec.category || 'snack';
+      var art = document.createElement('article');
+      art.className = 'recipe-item';
+      var matchHtml = rec._matchScore > 0
+        ? '<span class="match-badge">' + rec._matchScore + ' ingredient match' + (rec._matchScore === 1 ? '' : 'es') + '</span>'
+        : '';
+      var noteHtml = rec.note ? '<p class="recipe-note">' + escapeHtml(rec.note) + '</p>' : '';
+      var src = rec.source ? '<p class="recipe-source"><a href="' + escapeAttr(rec.source) + '" target="_blank" rel="noopener">Open reference recipe ↗</a></p>' : '';
+      var fd = rec.fromData ? '<p class="recipe-from-data">Source note: ' + escapeHtml(rec.fromData) + '</p>' : '';
+      art.innerHTML =
+        '<div class="tag-row">' +
+        '<span class="meal-tag ' + escapeAttr(cat) + '">' + escapeHtml(RECIPE_SECTION_LABEL[cat] || cat) + '</span>' +
+        matchHtml +
+        '</div>' +
+        '<h3>' + escapeHtml(rec.title || 'Recipe') + '</h3>' +
+        '<div class="recipe-kcal">~' + String(rec.kcal || '').replace(/^~/, '') + ' kcal · ~' + String(rec.protein || '').replace(/^~/, '') + ' g protein (approx.)</div>' +
+        '<ul class="recipe-ing">' + (rec.ingredients || []).map(function (i) { return '<li>' + escapeHtml(i) + '</li>'; }).join('') + '</ul>' +
+        noteHtml + src + fd;
+      return art;
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+    function escapeAttr(s) {
+      return escapeHtml(s).replace(/'/g, '&#39;');
+    }
+
+    function refreshRecipeList() {
+      if (!recipeMount || !recipeMeta) return;
+      recipeMount.innerHTML = '';
+      if (!recipeCatalog.length) {
+        recipeMeta.textContent = 'No recipe data loaded. Add recipes-data.js next to this file for GitHub Pages.';
+        recipeMount.innerHTML = '<p class="recipe-empty">Missing <code>recipes-data.js</code></p>';
+        return;
+      }
+      var tokens = normalizeIngredientTokens(recipeSearchEl ? recipeSearchEl.value : '');
+      var filtered = recipeCatalog.filter(function (r) {
+        if (activeRecipeCat === 'all') return true;
+        return r.category === activeRecipeCat;
+      });
+      var withScores = filtered.map(function (r) {
+        var c = Object.assign({}, r);
+        c._matchScore = scoreRecipe(r, tokens);
+        return c;
+      });
+      if (tokens.length) {
+        withScores.sort(function (a, b) {
+          if (b._matchScore !== a._matchScore) return b._matchScore - a._matchScore;
+          return (a.title || '').localeCompare(b.title || '');
+        });
+      } else {
+        withScores.sort(function (a, b) {
+          var ia = RECIPE_ORDER.indexOf(a.category);
+          var ib = RECIPE_ORDER.indexOf(b.category);
+          if (ia !== ib) return ia - ib;
+          return (a.title || '').localeCompare(b.title || '');
+        });
+      }
+      var total = withScores.length;
+      var shown = withScores;
+      if (!shown.length) {
+        recipeMeta.textContent = 'No recipes in this category.';
+        recipeMount.innerHTML = '<p class="recipe-empty">Try another tab.</p>';
+        return;
+      }
+      var matched = tokens.length ? shown.filter(function (x) { return x._matchScore > 0; }).length : shown.length;
+      recipeMeta.textContent = tokens.length
+        ? ('Showing ' + shown.length + ' recipes · ' + matched + ' with ≥1 ingredient hit · order: most hits first (0 hits last)')
+        : ('Showing ' + shown.length + ' recipes' + (activeRecipeCat === 'all' ? ' · grouped by meal' : ''));
+
+      if (!tokens.length && activeRecipeCat === 'all') {
+        RECIPE_ORDER.forEach(function (cat) {
+          var group = shown.filter(function (r) { return r.category === cat; });
+          if (!group.length) return;
+          var h = document.createElement('h3');
+          h.className = 'recipe-section-title';
+          h.textContent = RECIPE_SECTION_LABEL[cat];
+          recipeMount.appendChild(h);
+          var ul = document.createElement('div');
+          ul.className = 'recipe-list';
+          group.forEach(function (r) { ul.appendChild(renderRecipeItem(r)); });
+          recipeMount.appendChild(ul);
+        });
+      } else {
+        var list = document.createElement('div');
+        list.className = 'recipe-list';
+        shown.forEach(function (r) { list.appendChild(renderRecipeItem(r)); });
+        recipeMount.appendChild(list);
+      }
+    }
+
+    document.querySelectorAll('#recipeCategoryFilters button').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('#recipeCategoryFilters button').forEach(function (b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        activeRecipeCat = btn.getAttribute('data-cat') || 'all';
+        refreshRecipeList();
+      });
+    });
+    if (recipeSearchEl) {
+      recipeSearchEl.addEventListener('input', function () { refreshRecipeList(); });
+    }
+    refreshRecipeList();
+
+    /* ---------- Calculator ---------- */
+    function gramsFromInput() {
+      var amt = parseFloat(document.getElementById('cAmt').value) || 0;
+      var unit = document.getElementById('cUnit').value;
+      var gTsp = parseFloat(document.getElementById('gTsp').value) || 5;
+      var gTbsp = parseFloat(document.getElementById('gTbsp').value) || 15;
+      var gCup = parseFloat(document.getElementById('gCup').value) || 240;
+      if (unit === 'g') return amt;
+      if (unit === 'tsp') return amt * gTsp;
+      if (unit === 'tbsp') return amt * gTbsp;
+      if (unit === 'cup') return amt * gCup;
+      return 0;
+    }
+
+    function runCalc() {
+      var serve = parseFloat(document.getElementById('cServe').value) || 1;
+      var g = gramsFromInput();
+      var ratio = serve > 0 ? g / serve : 0;
+      var cal = (parseFloat(document.getElementById('cCal').value) || 0) * ratio;
+      var p = (parseFloat(document.getElementById('cProt').value) || 0) * ratio;
+      var c = (parseFloat(document.getElementById('cCarb').value) || 0) * ratio;
+      var f = (parseFloat(document.getElementById('cFat').value) || 0) * ratio;
+      var na = (parseFloat(document.getElementById('cNa').value) || 0) * ratio;
+      var out = document.getElementById('calcOut');
+      if (!out) return;
+      out.innerHTML =
+        '<strong style="display:block;margin-bottom:6px">For ' + (Math.round(g * 10) / 10) + ' g consumed</strong>' +
+        '<div><span>Calories</span><strong>' + Math.round(cal) + '</strong></div>' +
+        '<div><span>Protein</span><strong>' + p.toFixed(1) + ' g</strong></div>' +
+        '<div><span>Carbs</span><strong>' + c.toFixed(1) + ' g</strong></div>' +
+        '<div><span>Fat</span><strong>' + f.toFixed(1) + ' g</strong></div>' +
+        '<div><span>Sodium</span><strong>' + Math.round(na) + ' mg</strong></div>';
+    }
+
+    ['cCal','cProt','cCarb','cFat','cNa','cServe','cAmt','cUnit','gTsp','gTbsp','gCup'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('input', runCalc);
+      if (el) el.addEventListener('change', runCalc);
+    });
+    runCalc();
+
+    /* ---------- Measurements ---------- */
+    function loadMeas() {
+      try {
+        var raw = localStorage.getItem(STORAGE_MEAS);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) { return []; }
+    }
+    function saveMeas(arr) {
+      localStorage.setItem(STORAGE_MEAS, JSON.stringify(arr));
+    }
+    function renderMeas() {
+      var tbody = document.querySelector('#measTable tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      var rows = loadMeas().sort(function (a, b) { return new Date(b.date) - new Date(a.date); });
+      rows.forEach(function (r, idx) {
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + r.date + '</td><td>' + (r.weight ?? '') + '</td><td>' + (r.waist ?? '') + '</td><td>' +
+          (r.hips ?? '') + '</td><td>' + (r.arms ?? '') + '</td>' +
+          '<td><button type="button" class="btn secondary" data-del="' + r.date + '" style="margin:0;padding:6px;font-size:0.7rem">Del</button></td>';
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('[data-del]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var d = b.getAttribute('data-del');
+          saveMeas(loadMeas().filter(function (x) { return x.date !== d; }));
+          renderMeas();
+        });
+      });
+    }
+    var mf = document.getElementById('measForm');
+    if (mf) {
+      mf.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var entry = {
+          date: document.getElementById('mDate').value,
+          weight: document.getElementById('mWt').value,
+          waist: document.getElementById('mWaist').value,
+          hips: document.getElementById('mHips').value,
+          arms: document.getElementById('mArms').value
+        };
+        if (!entry.date) return;
+        var list = loadMeas().filter(function (x) { return x.date !== entry.date; });
+        list.push(entry);
+        saveMeas(list);
+        renderMeas();
+      });
+    }
+    document.getElementById('clearMeas') && document.getElementById('clearMeas').addEventListener('click', function () {
+      if (confirm('Clear all measurement history?')) { localStorage.removeItem(STORAGE_MEAS); renderMeas(); }
+    });
+    var today = new Date().toISOString().slice(0, 10);
+    var md = document.getElementById('mDate');
+    if (md && !md.value) md.value = today;
+    renderMeas();
+
+    /* ---------- Steps ---------- */
+    function loadSteps() {
+      try {
+        var raw = localStorage.getItem(STORAGE_STEPS);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) { return []; }
+    }
+    function saveStepsArr(arr) {
+      localStorage.setItem(STORAGE_STEPS, JSON.stringify(arr));
+    }
+    function renderSteps() {
+      var tbody = document.querySelector('#stepsTable tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+      loadSteps().sort(function (a, b) { return new Date(b.date) - new Date(a.date); }).forEach(function (r) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + r.date + '</td><td>' + r.steps + '</td>' +
+          '<td><button type="button" class="btn secondary" data-sdel="' + r.date + '" style="margin:0;padding:6px;font-size:0.7rem">Del</button></td>';
+        tbody.appendChild(tr);
+      });
+      tbody.querySelectorAll('[data-sdel]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var d = b.getAttribute('data-sdel');
+          saveStepsArr(loadSteps().filter(function (x) { return x.date !== d; }));
+          renderSteps();
+        });
+      });
+    }
+    var sd = document.getElementById('sDate');
+    if (sd && !sd.value) sd.value = today;
+    document.getElementById('saveSteps') && document.getElementById('saveSteps').addEventListener('click', function () {
+      var d = document.getElementById('sDate').value;
+      var s = parseInt(document.getElementById('sSteps').value, 10);
+      if (!d || isNaN(s)) return;
+      var list = loadSteps().filter(function (x) { return x.date !== d; });
+      list.push({ date: d, steps: s });
+      saveStepsArr(list);
+      renderSteps();
+    });
+    renderSteps();
+
+    var dayIx = (new Date().getDay() + 6) % 7;
+    var hint = document.getElementById('stepGoalHint');
+    if (hint) {
+      var g = days[dayIx];
+      var goal = g.uni ? '6,000' : (g.label.indexOf('Rest') !== -1 ? '5,000' : '8,000–10,000');
+      hint.textContent = 'Today (' + g.w + ') rough goal: ' + goal + ' steps · uni days lower · rest day minimum 5k.';
+    }
+
+    /* ---------- Firestore commented snippet (display only) ---------- */
+    var fb = document.getElementById('fbSnippet');
+    if (fb) {
+      fb.textContent = [
+        '/*',
+        '  FIREBASE / FIRESTORE — enable when hosting with sync:',
+        '',
+        '  1) npm i firebase (or use CDN modular SDK v9+)',
+        '  2) Firebase console → Project → Web app → copy config.',
+        '',
+        '  // import { initializeApp } from "firebase/app";',
+        '  // import { getFirestore, doc, setDoc, collection, addDoc } from "firebase/firestore";',
+        '',
+        '  // const firebaseConfig = { apiKey: "...", authDomain: "...", projectId: "..." };',
+        '  // const app = initializeApp(firebaseConfig);',
+        '  // const db = getFirestore(app);',
+        '',
+        '  // Example: save measurement',
+        '  // await addDoc(collection(db, "users", USER_ID, "measurements"), {',
+        '  //   date: "2026-04-01", weightKg: 79.2, waistCm: 82, hipsCm: 104, armsCm: 30',
+        '  // });',
+        '',
+        '  // Example: save daily steps + calorie summary',
+        '  // await setDoc(doc(db, "users", USER_ID, "daily", "2026-04-01"), {',
+        '  //   steps: 8420, caloriesGoal: 1450, caloriesConsumed: 1420',
+        '  // });',
+        '',
+        '  // Use Firebase Auth (email/Google) before writing user subcollections.',
+        '  // Security: lock writes with rules so each uid can only write their data.',
+        '*/'
+      ].join('\n');
+    }
+  })();
+  </script>
+</body>
+</html>
