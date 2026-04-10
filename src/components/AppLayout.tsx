@@ -5,7 +5,7 @@ const links = [
   { to: "/plan", label: "Plan" },
   { to: "/meals", label: "Meals" },
   { to: "/recipes", label: "Recipes" },
-  { to: "/calc", label: "Calc" },
+  { to: "/calc", label: "Food log" },
   { to: "/progress", label: "Progress" },
 ];
 
