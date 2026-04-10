@@ -1,6 +1,6 @@
 import { buildWeeklySchedule } from "@/lib/schedule";
-import type { GymPlan, MealSlots, MealSlotId, NutritionTargets, UserProfile } from "@/types/profile";
-import { defaultMealTimeHints, splitMealCalories } from "@/lib/nutrition";
+import type { GymPlan, GoalDirection, MealSlots, MealSlotId, NutritionTargets, UserProfile } from "@/types/profile";
+import { defaultMealTimeHints, evaluateGoalSafety, inferGoalDirection, splitMealCalories } from "@/lib/nutrition";
 
 const ALL_SLOTS: MealSlotId[] = [
   "preMorning",
@@ -93,14 +93,22 @@ function mergeMealAssignments(m: Partial<MealSlots> | undefined): MealSlots {
   return out;
 }
 
+function mergeGoalDirection(raw: UserProfile): GoalDirection {
+  return raw.goalDirection ?? inferGoalDirection(raw.weightKg, raw.targetWeightKg);
+}
+
 export function migrateProfile(raw: UserProfile): UserProfile {
   const gym = mergeGym(raw.gym);
   const nutrition = mergeNutrition(raw.nutrition, raw.nutrition?.dailyCalories ?? 1800);
   const mealAssignments = mergeMealAssignments(raw.mealAssignments);
   const weeklySchedule =
     raw.weeklySchedule?.length === 7 ? raw.weeklySchedule : buildWeeklySchedule(gym);
+  const goalDirection = mergeGoalDirection(raw);
+  const goalSafety = evaluateGoalSafety(raw.weightKg, raw.targetWeightKg, raw.goalDate, goalDirection);
   return {
     ...raw,
+    goalDirection,
+    goalSafety,
     gym,
     nutrition,
     mealAssignments,

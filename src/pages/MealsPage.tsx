@@ -105,44 +105,46 @@ export default function MealsPage() {
 
   return (
     <div className="app-shell">
-      <h1>Meals</h1>
-      <p className="muted" style={{ fontSize: "0.88rem" }}>
-        Today ({date}) · Targets, timing, and checkboxes sync to your account.
+      <h1 className="app-page-title">Meals</h1>
+      <p className="page-lead">
+        Today · <strong>{date}</strong> · Targets, meal times, and checkboxes save to your account.
       </p>
 
       {allChecked && (
         <div className="success-banner" style={{ marginBottom: "0.75rem" }}>
-          You are done for the day — nice work.
+          All meal slots checked — solid day.
         </div>
       )}
 
       <div className="card">
-        <h2>Macros vs targets</h2>
-        <p className="muted" style={{ margin: "0 0 0.65rem", fontSize: "0.82rem" }}>
-          From Calc log today: <strong>{consumedKcal}</strong> kcal · Plan {n.dailyCalories} kcal
+        <h2>Macros</h2>
+        <p className="page-lead" style={{ margin: "0 0 0.65rem" }}>
+          Logged today (from Calc): <strong>{consumedKcal}</strong> kcal · Plan <strong>{n.dailyCalories}</strong> kcal
         </p>
         <MacroBar label="Protein" current={consumedP} target={n.proteinG} kind="protein" />
         <MacroBar label="Carbs" current={consumedC} target={n.carbsG} kind="carbs" />
         <MacroBar label="Fat" current={consumedF} target={n.fatG} kind="fat" />
-        <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.8rem" }}>
-          Add protein/carbs/fat in Calc when logging for accurate bars.
+        <p className="page-lead" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+          Add protein, carbs, and fat in Food log so these bars stay accurate.
         </p>
       </div>
 
       <div className="card">
         <h2>Meal timing</h2>
-        <p className="muted" style={{ margin: "0 0 0.5rem", fontSize: "0.85rem" }}>
+        <p className="page-lead" style={{ margin: "0 0 0.5rem" }}>
           {n.mealTimingNote}
         </p>
-        <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "var(--muted)", fontSize: "0.82rem" }}>
+        <ul className="coach-list coach-list--tight" style={{ marginTop: 0 }}>
           {ORDER.map((slot) => (
             <li key={slot} style={{ marginBottom: "0.25rem" }}>
               <strong>{labels[slot]}:</strong> {n.mealTimeHints[slot] ?? "—"}
             </li>
           ))}
         </ul>
-        <p className="muted" style={{ margin: "0.65rem 0 0", fontSize: "0.8rem" }}>
-          Batch cooking: {n.batchCooking ? "Cook 2–3 anchors (protein + carb base), remix into lunches." : "Keep repeats simple mid-week."}
+        <p className="page-lead" style={{ margin: "0.65rem 0 0", fontSize: "0.85rem" }}>
+          {n.batchCooking
+            ? "Batch cooking: cook 2–3 protein + carb bases and remix through the week."
+            : "Flexible prep: repeat simple meals mid-week if that is easier."}
         </p>
       </div>
 

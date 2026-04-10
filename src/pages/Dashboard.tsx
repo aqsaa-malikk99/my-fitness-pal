@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { listCalculatorDay, listProgress, todayIso } from "@/firebase/userDoc";
 import { stepsToKcalBurned, stepsNeededForKcalDeficit } from "@/lib/schedule";
 import { tdeeEstimate } from "@/lib/nutrition";
-import type { MealSlotId } from "@/types/profile";
+import type { GoalDirection, MealSlotId } from "@/types/profile";
 
 const SLOT_KEYS: MealSlotId[] = [
   "preMorning",
@@ -51,13 +51,28 @@ export default function Dashboard() {
 
   const n = profile.nutrition;
   const g = profile.gym;
+  const goalDir: GoalDirection = profile.goalDirection ?? "lose";
   const remainEat = n.dailyCalories - consumed;
   const stepsBurnToday = stepsToKcalBurned(todaySteps, profile.weightKg);
   const tdee = tdeeEstimate(profile.weightKg, profile.heightCm);
   const plannedDeficit = Math.max(0, tdee - n.dailyCalories);
+  const plannedSurplus = Math.max(0, n.dailyCalories - tdee);
   const over = consumed > n.dailyCalories ? consumed - n.dailyCalories : 0;
   const stepsToWalkOff = over > 0 ? stepsNeededForKcalDeficit(over, profile.weightKg) : 0;
   const missingRecipes = SLOT_KEYS.filter((k) => !profile.mealAssignments[k]).length;
+
+  const eatSub =
+    goalDir === "gain"
+      ? remainEat >= 0
+        ? `${remainEat} kcal still to eat`
+        : `${-remainEat} kcal over today’s target`
+      : goalDir === "maintain"
+        ? remainEat >= 0
+          ? `${remainEat} kcal under target`
+          : `${-remainEat} kcal over target`
+        : remainEat >= 0
+          ? `${remainEat} kcal left`
+          : `${-remainEat} kcal over`;
 
   const deloadWeek = useMemo(() => {
     const start = new Date(profile.createdAt);
@@ -71,8 +86,13 @@ export default function Dashboard() {
     <div className="app-shell">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: "0.75rem" }}>
         <div>
-          <h1 style={{ marginBottom: "0.15rem" }}>Hi, {profile.displayName}</h1>
-          <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>
+          <p className="card-section-label" style={{ marginBottom: "0.35rem" }}>
+            {goalDir === "gain" ? "Muscle & gain focus" : goalDir === "maintain" ? "Maintenance focus" : "Fat loss focus"}
+          </p>
+          <h1 className="app-page-title" style={{ marginBottom: "0.15rem" }}>
+            Hi, {profile.displayName}
+          </h1>
+          <p className="page-lead" style={{ margin: 0 }}>
             BMI {profile.bmi} · {profile.bmiCategory}
           </p>
         </div>
@@ -88,12 +108,12 @@ export default function Dashboard() {
 
       <div className="metric-grid">
         <div className="metric-tile">
-          <span className="metric-label">Eat today</span>
+          <span className="metric-label">Food today</span>
           <span className="metric-value">
             {consumed}
             <small> / {n.dailyCalories}</small>
           </span>
-          <span className="metric-sub">{remainEat >= 0 ? `${remainEat} kcal left` : `${-remainEat} kcal over`}</span>
+          <span className="metric-sub">{eatSub}</span>
         </div>
         <div className="metric-tile">
           <span className="metric-label">Steps</span>
@@ -101,12 +121,12 @@ export default function Dashboard() {
             {todaySteps.toLocaleString()}
             <small> / {g.stepsGoal.toLocaleString()}</small>
           </span>
-          <span className="metric-sub">~{stepsBurnToday} kcal from steps today</span>
+          <span className="metric-sub">~{stepsBurnToday} kcal from walking today (estimate)</span>
         </div>
         <div className="metric-tile">
           <span className="metric-label">Burn (7d steps)</span>
           <span className="metric-value">{weekBurned}</span>
-          <span className="metric-sub">kcal est. from logged steps</span>
+          <span className="metric-sub">Estimated from steps you logged (7 days)</span>
         </div>
         <div className="metric-tile">
           <span className="metric-label">Protein target</span>
@@ -117,47 +137,84 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {over > 0 && (
-        <div className="card" style={{ borderColor: "var(--warn)" }}>
-          <strong>Over daily calories</strong>
-          <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.88rem" }}>
-            Roughly <strong>{stepsToWalkOff.toLocaleString()}</strong> extra steps to offset ~{over} kcal (estimate).
+      {over > 0 && goalDir === "lose" && (
+        <div className="card card--soft-warn">
+          <h3 className="card-title-sm">Over today’s calorie target</h3>
+          <p className="page-lead" style={{ margin: "0.35rem 0 0" }}>
+            Roughly <strong>{stepsToWalkOff.toLocaleString()}</strong> extra steps would offset about {over} kcal — rough
+            estimate only; one day does not undo your plan.
+          </p>
+        </div>
+      )}
+      {over > 0 && goalDir === "gain" && (
+        <div className="card" style={{ borderColor: "var(--surface2)" }}>
+          <h3 className="card-title-sm">Above today’s target</h3>
+          <p className="page-lead" style={{ margin: "0.35rem 0 0" }}>
+            On a gain phase, going over occasionally is normal. If it happens often, your targets may be low — check
+            Settings.
+          </p>
+        </div>
+      )}
+      {over > 0 && goalDir === "maintain" && (
+        <div className="card card--soft-warn">
+          <h3 className="card-title-sm">Over today’s target</h3>
+          <p className="page-lead" style={{ margin: "0.35rem 0 0" }}>
+            Balance over the week matters more than one day. Extra walk optional — ~{stepsToWalkOff.toLocaleString()}{" "}
+            steps ≈ {over} kcal (very rough).
           </p>
         </div>
       )}
 
       <div className="card">
-        <h2>Targets</h2>
-        <p className="muted" style={{ margin: 0, fontSize: "0.88rem" }}>
-          Planned deficit ≈ <strong>{plannedDeficit}</strong> kcal/day (TDEE ~{tdee} − plan {n.dailyCalories}). Batch
-          cooking: {n.batchCooking ? "on" : "flexible"}.
-        </p>
-        <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "0.88rem" }}>
-          Meal slots not assigned: <strong>{missingRecipes}</strong> / {SLOT_KEYS.length} · Deload cadence: every{" "}
-          {g.deloadEveryWeeks}w
+        <h2>Energy & plan</h2>
+        {goalDir === "lose" && (
+          <p className="page-lead" style={{ marginTop: 0 }}>
+            Planned deficit about <strong>{plannedDeficit}</strong> kcal/day vs estimated maintenance (~{tdee} kcal).
+            Your plan: <strong>{n.dailyCalories}</strong> kcal. Batch cooking:{" "}
+            {n.batchCooking ? "you’re open to meal prep" : "flexible"}.
+          </p>
+        )}
+        {goalDir === "gain" && (
+          <p className="page-lead" style={{ marginTop: 0 }}>
+            Planned surplus about <strong>{plannedSurplus}</strong> kcal/day vs estimated maintenance (~{tdee} kcal).
+            Your plan: <strong>{n.dailyCalories}</strong> kcal. Batch cooking:{" "}
+            {n.batchCooking ? "you’re open to meal prep" : "flexible"}.
+          </p>
+        )}
+        {goalDir === "maintain" && (
+          <p className="page-lead" style={{ marginTop: 0 }}>
+            Intake is set near estimated maintenance (~{tdee} kcal). Plan: <strong>{n.dailyCalories}</strong> kcal. Batch
+            cooking: {n.batchCooking ? "you’re open to meal prep" : "flexible"}.
+          </p>
+        )}
+        <p className="page-lead" style={{ marginBottom: 0 }}>
+          Recipes not chosen yet: <strong>{missingRecipes}</strong> / {SLOT_KEYS.length} meal slots · Deload week every{" "}
+          <strong>{g.deloadEveryWeeks}</strong> weeks
           {deloadWeek ? <span className="pill warn" style={{ marginLeft: "0.35rem" }}>Deload window</span> : null}
         </p>
       </div>
 
       <details className="card">
-        <summary style={{ cursor: "pointer", fontWeight: 600 }}>Coaching notes</summary>
-        <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "0.88rem" }}>
-          {profile.expectations}
-        </p>
-        <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "0.88rem" }}>
-          <strong>Avoid:</strong> {profile.mistakesToAvoid}
-        </p>
-        <p className="muted" style={{ margin: "0.5rem 0 0", fontSize: "0.88rem" }}>
-          <strong>Quick wins:</strong> {profile.quickWins}
-        </p>
+        <summary className="details-summary">Coaching notes</summary>
+        <ul className="coach-list">
+          <li>
+            <span className="coach-list-label">Expect</span> {profile.expectations}
+          </li>
+          <li>
+            <span className="coach-list-label">Skip</span> {profile.mistakesToAvoid}
+          </li>
+          <li>
+            <span className="coach-list-label">Try this week</span> {profile.quickWins}
+          </li>
+        </ul>
       </details>
 
       <div className="card">
-        <h2>Goal safety</h2>
+        <h2>Goal check</h2>
         <p className={profile.goalSafety.safe ? "pill ok" : "pill bad"} style={{ marginBottom: "0.5rem" }}>
-          {profile.goalSafety.safe ? "On track" : "Aggressive timeline"}
+          {profile.goalSafety.safe ? "Timeline looks reasonable" : "Timeline is aggressive"}
         </p>
-        <p className="muted" style={{ margin: 0, fontSize: "0.88rem" }}>
+        <p className="page-lead" style={{ margin: 0 }}>
           {profile.goalSafety.message}
         </p>
       </div>

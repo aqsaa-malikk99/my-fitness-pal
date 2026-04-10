@@ -7,9 +7,10 @@ import {
   bmiCategory,
   computeBmi,
   evaluateGoalSafety,
+  goalDirectionLabel,
 } from "@/lib/nutrition";
 import { buildWeeklySchedule } from "@/lib/schedule";
-import type { BodyType, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
+import type { BodyType, GoalDirection, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
 import { saveProfile } from "@/firebase/userDoc";
 
 const DOW = [
@@ -56,6 +57,7 @@ export default function SettingsPage() {
   const [deloadEveryWeeks, setDeloadEveryWeeks] = useState(4);
   const [stepsGoal, setStepsGoal] = useState(10000);
   const [batchCooking, setBatchCooking] = useState(true);
+  const [goalDirection, setGoalDirection] = useState<GoalDirection>("lose");
 
   useEffect(() => {
     if (!profile) return;
@@ -85,6 +87,7 @@ export default function SettingsPage() {
     setDeloadEveryWeeks(g.deloadEveryWeeks);
     setStepsGoal(g.stepsGoal);
     setBatchCooking(profile.nutrition.batchCooking);
+    setGoalDirection(profile.goalDirection ?? "lose");
     if (profile.period) {
       setPeriodEnabled(profile.period.enabled);
       setCycleLengthDays(profile.period.cycleLengthDays);
@@ -136,17 +139,19 @@ export default function SettingsPage() {
       targetWeightKg,
       goalDate,
       bodyType,
-      batchCooking
+      batchCooking,
+      goalDirection,
     );
     const weeklySchedule = buildWeeklySchedule(gym);
     const bmi = computeBmi(weightKg, heightCm);
     const bmiCat = bmiCategory(bmi);
-    const safety = evaluateGoalSafety(weightKg, targetWeightKg, goalDate);
+    const safety = evaluateGoalSafety(weightKg, targetWeightKg, goalDate, goalDirection);
     const dash = buildDashboardCopy({
       bmiCategory: bmiCat,
       foodLikes,
       gym,
       nutrition,
+      goalDirection,
     });
     const period: PeriodTracking = periodEnabled
       ? {
@@ -164,6 +169,7 @@ export default function SettingsPage() {
       bodyType,
       targetWeightKg,
       goalDate,
+      goalDirection,
       foodLikes,
       favoriteFoods,
       gym,
@@ -192,14 +198,14 @@ export default function SettingsPage() {
   return (
     <div className="app-shell">
       <div className="row" style={{ justifyContent: "space-between", marginBottom: "0.75rem" }}>
-        <h1 style={{ margin: 0 }}>Profile & settings</h1>
+        <h1 className="app-page-title" style={{ margin: 0 }}>
+          Profile & settings
+        </h1>
         <Link to="/" className="btn btn-ghost" style={{ textDecoration: "none" }}>
           Home
         </Link>
       </div>
-      <p className="muted" style={{ fontSize: "0.88rem" }}>
-        Updates your plan, nutrition targets, and weekly schedule. Meal assignments are kept.
-      </p>
+      <p className="page-lead">Update your goal, targets, and schedule. Saved meal picks stay as they are.</p>
       {err && <div className="error-banner">{err}</div>}
       {ok && <div className="success-banner">{ok}</div>}
 
@@ -229,6 +235,22 @@ export default function SettingsPage() {
 
       <div className="card stack">
         <h2>Goal</h2>
+        <p className="page-lead" style={{ marginTop: 0 }}>
+          Primary focus (drives calorie target and dashboard copy)
+        </p>
+        <div className="goal-segment" role="group" aria-label="Primary goal">
+          {(["lose", "gain", "maintain"] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              className={goalDirection === g ? "btn btn-primary" : "btn btn-secondary"}
+              style={{ flex: "1 1 30%", minWidth: "6.5rem", fontSize: "0.82rem" }}
+              onClick={() => setGoalDirection(g)}
+            >
+              {goalDirectionLabel(g)}
+            </button>
+          ))}
+        </div>
         <label>Target weight (kg)</label>
         <input
           type="number"
@@ -240,8 +262,8 @@ export default function SettingsPage() {
         />
         <label>Goal date</label>
         <input type="date" value={goalDate} onChange={(e) => setGoalDate(e.target.value)} />
-        <p className="muted" style={{ margin: 0, fontSize: "0.82rem" }}>
-          Nutrition targets are recalculated from these fields when you save.
+        <p className="page-lead" style={{ marginBottom: 0 }}>
+          When you save, we recalculate daily calories and macros from your goal, weight, and date.
         </p>
       </div>
 

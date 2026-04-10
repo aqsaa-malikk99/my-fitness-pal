@@ -9,9 +9,10 @@ import {
   bmiGuidance,
   computeBmi,
   evaluateGoalSafety,
+  goalDirectionLabel,
 } from "@/lib/nutrition";
 import { buildWeeklySchedule } from "@/lib/schedule";
-import type { BodyType, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
+import type { BodyType, GoalDirection, PeriodTracking, UniDayMode, UserProfile } from "@/types/profile";
 import { emptyMealSlots, saveProfile } from "@/firebase/userDoc";
 
 const DOW = [
@@ -68,13 +69,14 @@ export default function Onboarding() {
   const [stepsGoal, setStepsGoal] = useState(10000);
 
   const [batchCooking, setBatchCooking] = useState(true);
+  const [goalDirection, setGoalDirection] = useState<GoalDirection>("lose");
 
   if (!user) return null;
 
   const bmi = computeBmi(weightKg, heightCm);
   const bmiCat = bmiCategory(bmi);
   const guidance = bmiGuidance(bmi, bmiCat);
-  const safety = evaluateGoalSafety(weightKg, targetWeightKg, goalDate);
+  const safety = evaluateGoalSafety(weightKg, targetWeightKg, goalDate, goalDirection);
 
   const machines = machinesRaw
     .split(/[,;\n]+/)
@@ -97,7 +99,8 @@ export default function Onboarding() {
       targetWeightKg,
       goalDate,
       bodyType,
-      batchCooking
+      batchCooking,
+      goalDirection,
     );
     const gym = {
       daysPerWeek,
@@ -124,6 +127,7 @@ export default function Onboarding() {
       foodLikes,
       gym,
       nutrition,
+      goalDirection,
     });
     const now = new Date().toISOString();
     const period: PeriodTracking = periodEnabled
@@ -140,6 +144,7 @@ export default function Onboarding() {
       bodyType,
       targetWeightKg,
       goalDate,
+      goalDirection,
       foodLikes,
       favoriteFoods,
       gym,
@@ -169,7 +174,8 @@ export default function Onboarding() {
   return (
     <div className="app-shell">
       <p className="pill">Step {step + 1} / 6</p>
-      <h1>Your profile</h1>
+      <h1 className="app-page-title">Your profile</h1>
+      <p className="page-lead">A few short steps — we will tailor calories, protein, and your week around your goal.</p>
       {err && <div className="error-banner">{err}</div>}
 
       {step === 0 && (
@@ -227,6 +233,22 @@ export default function Onboarding() {
       {step === 2 && (
         <div className="card stack">
           <h2>Goal & timeline</h2>
+          <p className="page-lead" style={{ marginTop: 0 }}>
+            What is the main outcome you want from nutrition right now?
+          </p>
+          <div className="goal-segment" role="group" aria-label="Primary goal">
+            {(["lose", "gain", "maintain"] as const).map((g) => (
+              <button
+                key={g}
+                type="button"
+                className={goalDirection === g ? "btn btn-primary" : "btn btn-secondary"}
+                style={{ flex: "1 1 30%", minWidth: "6.5rem", fontSize: "0.82rem" }}
+                onClick={() => setGoalDirection(g)}
+              >
+                {goalDirectionLabel(g)}
+              </button>
+            ))}
+          </div>
           <label>Target weight (kg)</label>
           <input
             type="number"
@@ -239,10 +261,26 @@ export default function Onboarding() {
           <label>Target month / date</label>
           <input type="date" value={goalDate} onChange={(e) => setGoalDate(e.target.value)} />
           <p className={safety.safe ? "success-banner" : "error-banner"} style={{ marginTop: "0.5rem" }}>
-            {safety.safe ? "Looks reasonable: " : "Heads up: "}
+            {safety.safe ? "Looks reasonable — " : "Heads up — "}
             {safety.message}
           </p>
-          <p className="muted">Max sustainable pace we use: ~{(safety.maxWeeklyLossKg * 2.2).toFixed(2)} lb/week.</p>
+          {goalDirection === "lose" && (
+            <p className="page-lead" style={{ marginBottom: 0 }}>
+              Sustainable loss cap for your size: up to <strong>{(safety.maxWeeklyLossKg * 2.2).toFixed(1)}</strong>{" "}
+              lb/week.
+            </p>
+          )}
+          {goalDirection === "gain" && (
+            <p className="page-lead" style={{ marginBottom: 0 }}>
+              Lean-gain cap we use: up to <strong>{(safety.maxWeeklyGainKg * 2.2).toFixed(1)}</strong> lb/week so more of
+              the gain is muscle-friendly.
+            </p>
+          )}
+          {goalDirection === "maintain" && (
+            <p className="page-lead" style={{ marginBottom: 0 }}>
+              We will set calories close to your estimated maintenance and keep protein high for training.
+            </p>
+          )}
 
           <h3 style={{ marginTop: "1rem", marginBottom: "0.35rem" }}>Cycle tracking</h3>
           <label className="row" style={{ fontSize: "0.9rem", color: "var(--muted)" }}>

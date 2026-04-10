@@ -73,8 +73,10 @@ export default function ProgressPage() {
 
   return (
     <div className="app-shell">
-      <h1>Progress</h1>
-      <p className="muted">Weight, measurements, injuries, and notes. Entries stay until you delete them.</p>
+      <h1 className="app-page-title">Progress</h1>
+      <p className="page-lead">
+        Log weight, steps, measurements, and notes. Entries stay in your history until you remove them.
+      </p>
 
       <div className="card stack">
         <h2>New entry</h2>

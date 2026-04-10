@@ -1,5 +1,8 @@
 export type BodyType = "ectomorph" | "mesomorph" | "endomorph" | "unsure";
 
+/** Primary nutrition goal — drives calorie target and in-app copy. */
+export type GoalDirection = "lose" | "gain" | "maintain";
+
 export type MealSlotId =
   | "preMorning"
   | "breakfast"
@@ -86,6 +89,8 @@ export interface UserProfile {
   targetWeightKg: number;
   /** ISO date string goal deadline */
   goalDate: string;
+  /** Lose, gain, or maintain — used for targets and messaging */
+  goalDirection: GoalDirection;
   foodLikes: string;
   favoriteFoods: string;
   gym: GymPlan;
@@ -101,7 +106,11 @@ export interface UserProfile {
   goalSafety: {
     safe: boolean;
     message: string;
+    /** Sustainable weekly loss cap (kg/wk); used when losing */
     maxWeeklyLossKg: number;
+    /** Sustainable weekly gain cap (kg/wk); used when gaining */
+    maxWeeklyGainKg: number;
+    direction: GoalDirection;
   };
   mealAssignments: MealSlots;
   onboardingComplete: boolean;

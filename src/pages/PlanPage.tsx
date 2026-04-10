@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { buildGymPlanText } from "@/lib/nutrition";
 import { stepsNeededForKcalDeficit } from "@/lib/schedule";
+import type { GoalDirection } from "@/types/profile";
 
 export default function PlanPage() {
   const { profile } = useAuth();
@@ -13,13 +14,15 @@ export default function PlanPage() {
   if (!profile) return null;
   const g = profile.gym;
   const n = profile.nutrition;
+  const goalDir: GoalDirection = profile.goalDirection ?? "lose";
   const stepsFor300Kcal = stepsNeededForKcalDeficit(300, profile.weightKg);
 
   return (
     <div className="app-shell">
-      <h1>Weekly plan</h1>
-      <p className="muted" style={{ fontSize: "0.88rem" }}>
-        Tap a day for the full session outline. Uni days follow your onboarding choice ({g.uniDayMode.replace("_", " ")}).
+      <h1 className="app-page-title">Weekly plan</h1>
+      <p className="page-lead">
+        Pick a day for the session outline. Lighter “uni” days follow what you chose in onboarding (
+        {g.uniDayMode.replace("_", " ")}).
       </p>
 
       <div className="week-strip">
@@ -68,10 +71,10 @@ export default function PlanPage() {
 
       <div className="card">
         <h2>Session rules</h2>
-        <ul style={{ margin: 0, paddingLeft: "1.1rem", color: "var(--muted)", fontSize: "0.88rem" }}>
+        <ul className="coach-list coach-list--tight">
           <li>
-            After weights: <strong>{g.cardioAfterWeightsMin}–{g.cardioAfterWeightsMax}</strong> min easy cardio (cap),
-            when lifting at the gym.
+            After weights: <strong>{g.cardioAfterWeightsMin}–{g.cardioAfterWeightsMax}</strong> min easy cardio when you
+            lift.
           </li>
           <li>
             Main window <strong>{g.windowStart}</strong>–<strong>{g.windowEnd}</strong>
@@ -83,38 +86,41 @@ export default function PlanPage() {
             )}
           </li>
           <li>
-            Deload / easier week every <strong>{g.deloadEveryWeeks}</strong> weeks — reduce loads ~10–15% and keep
-            technique crisp.
+            Deload / easier week every <strong>{g.deloadEveryWeeks}</strong> weeks — drop loads ~10–15%, keep reps clean.
           </li>
           <li>
-            Steps goal <strong>{g.stepsGoal.toLocaleString()}</strong>/day · Extra walking helps close small calorie
-            gaps (~{stepsFor300Kcal} steps ≈ 300 kcal for your weight, rough).
+            Steps goal <strong>{g.stepsGoal.toLocaleString()}</strong>/day · About{" "}
+            <strong>{stepsFor300Kcal}</strong> steps ≈ 300 kcal for your weight (very rough).
+            {goalDir === "lose" || goalDir === "maintain"
+              ? " Walking helps close small calorie gaps."
+              : " Movement still supports appetite and recovery on a bulk."}
           </li>
         </ul>
       </div>
 
       <div className="card">
-        <h2>Calories & deficit</h2>
-        <p className="muted" style={{ margin: 0, fontSize: "0.88rem" }}>
-          Plan intake <strong>{n.dailyCalories} kcal</strong> with <strong>{n.proteinG}g</strong> protein. Log food in
-          Calc to see how today compares. Batch cooking: {n.batchCooking ? "recommended anchors" : "flexible"}.
+        <h2>{goalDir === "gain" ? "Calories & surplus" : goalDir === "maintain" ? "Calories & balance" : "Calories & deficit"}</h2>
+        <p className="page-lead" style={{ margin: 0 }}>
+          Daily target <strong>{n.dailyCalories} kcal</strong>, protein <strong>{n.proteinG}g</strong>. Log meals in{" "}
+          <strong>Calc</strong> to compare to the plan. Batch cooking:{" "}
+          {n.batchCooking ? "you like repeatable anchors" : "stay flexible"}.
         </p>
       </div>
 
       {profile.period?.enabled && (
         <div className="card">
           <h2>Cycle</h2>
-          <p className="muted" style={{ margin: 0, fontSize: "0.88rem" }}>
+          <p className="page-lead" style={{ margin: 0 }}>
             Tracking on · typical cycle {profile.period.cycleLengthDays} days
-            {profile.period.lastPeriodStart ? ` · last start ${profile.period.lastPeriodStart}` : ""}. Lighten
-            intensity when energy is low; keep protein and steps consistent.
+            {profile.period.lastPeriodStart ? ` · last start ${profile.period.lastPeriodStart}` : ""}. When energy is
+            low, ease intensity — keep protein and daily movement steady.
           </p>
         </div>
       )}
 
       <div className="card">
         <h2>Equipment & summary</h2>
-        <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+        <p className="page-lead" style={{ margin: 0 }}>
           {buildGymPlanText(g)}
         </p>
       </div>

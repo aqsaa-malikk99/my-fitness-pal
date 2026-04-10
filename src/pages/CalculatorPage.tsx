@@ -6,6 +6,7 @@ import {
   listCalculatorDay,
   todayIso,
 } from "@/firebase/userDoc";
+import type { GoalDirection } from "@/types/profile";
 
 type PortionUnit = "g" | "oz" | "cup" | "tbsp" | "tsp";
 
@@ -62,6 +63,19 @@ export default function CalculatorPage() {
   const totalF = useMemo(() => items.reduce((s, i) => s + (i.fatG ?? 0), 0), [items]);
   const target = profile?.nutrition.dailyCalories ?? 0;
   const remain = target - total;
+  const goalDir: GoalDirection = profile?.goalDirection ?? "lose";
+  const remainPhrase =
+    goalDir === "gain"
+      ? remain >= 0
+        ? `${remain} kcal to eat`
+        : `${-remain} kcal over`
+      : goalDir === "maintain"
+        ? remain >= 0
+          ? `${remain} kcal under`
+          : `${-remain} kcal over`
+        : remain >= 0
+          ? `${remain} kcal left`
+          : `${-remain} kcal over`;
 
   const gramsTaken = amountToGrams(amt, unit);
   const ratio = serveG > 0 ? gramsTaken / serveG : 0;
@@ -106,9 +120,10 @@ export default function CalculatorPage() {
 
   return (
     <div className="app-shell">
-      <h1>Calculator</h1>
-      <p className="muted" style={{ fontSize: "0.88rem" }}>
-        Food log plus a smart portion scaler (label macros per serving vs what you actually took).
+      <h1 className="app-page-title">Food log</h1>
+      <p className="page-lead">
+        Log items by hand or use the portion tool — enter what the label says per serving, then how much you actually
+        had.
       </p>
 
       <div className="card">
@@ -119,7 +134,8 @@ export default function CalculatorPage() {
           {target > 0 && (
             <>
               {" "}
-              · Target {target} kcal · <span className={remain < 0 ? "pill bad" : "pill ok"}>{remain} kcal left</span>
+              · Target {target} kcal ·{" "}
+              <span className={remain < 0 ? "pill bad" : "pill ok"}>{remainPhrase}</span>
             </>
           )}
         </p>

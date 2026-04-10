@@ -383,6 +383,78 @@ h1 {
   margin: 0 0 0.25rem;
 }
 
+.app-page-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.page-lead {
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.5;
+  margin: 0 0 1rem;
+}
+
+.card-section-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.goal-segment {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.85rem;
+}
+
+.coach-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.coach-list li {
+  margin-bottom: 0.55rem;
+}
+
+.coach-list--tight li {
+  margin-bottom: 0.32rem;
+}
+
+.coach-list-label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent2);
+  font-weight: 600;
+  margin-bottom: 0.12rem;
+}
+
+.details-summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1.02rem;
+}
+
+.card-title-sm {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.card--soft-warn {
+  border-color: rgba(251, 191, 36, 0.4);
+  background: rgba(251, 191, 36, 0.07);
+}
+
 .page-title {
   margin-bottom: 1rem;
 }

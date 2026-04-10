@@ -237,9 +237,10 @@ export default function RecipesPage() {
 
   return (
     <div className="app-shell">
-      <h1>Recipes</h1>
+      <h1 className="app-page-title">Recipes</h1>
+      <p className="page-lead">Browse your library, filter, and assign meals to each slot.</p>
 
-      {seeding && <p className="muted">Syncing recipe library to your account…</p>}
+      {seeding && <p className="page-lead" style={{ marginTop: "-0.5rem" }}>Syncing recipes to your account…</p>}
 
       {msg && (msg.startsWith("Saved") || msg.includes("updated") || msg.includes("deleted") ? <div className="success-banner">{msg}</div> : <div className="error-banner">{msg}</div>)}
 
